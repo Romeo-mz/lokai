@@ -1,0 +1,32 @@
+services:
+  # Ollama server
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # lokai CLI
+  lokai:
+    build:
+      context: .
+      args:
+        VERSION: dev
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    # Interactive mode needs a TTY
+    stdin_open: true
+    tty: true
+
+volumes:
+  ollama_data:
