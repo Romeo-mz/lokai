@@ -1,0 +1,28 @@
+# Binaries
+bin/
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Dependency
+vendor/
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+.vscode/*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
