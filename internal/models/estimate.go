@@ -1,3 +1,11 @@
+// Package models — performance estimation.
+//
+// Estimates token generation speed, time-to-first-token, and
+// human-friendly task durations based on hardware specs.
+//
+// Sources:
+//   GPU benchmarks  — https://github.com/XiongjieDai/GPU-Benchmarks-on-LLM-Inference
+//   Ollama perf FAQ — https://github.com/ollama/ollama/blob/main/docs/faq.md
 package models
 
 import (
@@ -146,6 +154,88 @@ func estimateGenerationTime(tokPerSec float64) string {
 	}
 	minutes := seconds / 60
 	return fmt.Sprintf("~%.1f min for %d tokens", minutes, int(typicalTokens))
+}
+
+// RealWorldTasks returns human-friendly task descriptions with estimated times
+// tailored to the selected use case.
+func RealWorldTasks(useCase UseCase, tokPerSec float64) []string {
+	if tokPerSec <= 0 {
+		return nil
+	}
+	fmtTime := func(tokens float64) string {
+		secs := tokens / tokPerSec
+		if secs < 1 {
+			return "under 1 second"
+		}
+		if secs < 60 {
+			return fmt.Sprintf("~%.0f seconds", secs)
+		}
+		mins := secs / 60
+		if mins < 60 {
+			return fmt.Sprintf("~%.1f minutes", mins)
+		}
+		return fmt.Sprintf("~%.1f hours", mins/60)
+	}
+
+	switch useCase {
+	case UseCaseChat:
+		return []string{
+			"Quick Q&A answer: " + fmtTime(80),
+			"Write a 500-word email: " + fmtTime(700),
+			"Summarize a long article: " + fmtTime(300),
+			"Brainstorm 10 ideas: " + fmtTime(400),
+		}
+	case UseCaseCode:
+		return []string{
+			"Generate a function (~30 lines): " + fmtTime(200),
+			"Build a portfolio HTML page: " + fmtTime(800),
+			"Write unit tests for a class: " + fmtTime(500),
+			"Refactor & explain legacy code: " + fmtTime(600),
+		}
+	case UseCaseVision:
+		return []string{
+			"Describe what's in a photo: " + fmtTime(150),
+			"Read text from a screenshot (OCR): " + fmtTime(100),
+			"Analyze a chart or diagram: " + fmtTime(200),
+		}
+	case UseCaseEmbedding:
+		return []string{
+			"Embed a single document: under 1 second",
+			"Index 100 documents for search: " + fmtTime(5000),
+			"Build a knowledge base (1K docs): " + fmtTime(50000),
+		}
+	case UseCaseReasoning:
+		return []string{
+			"Solve a math equation: " + fmtTime(300),
+			"Walk through a logic puzzle: " + fmtTime(500),
+			"Plan a multi-step project: " + fmtTime(800),
+		}
+	case UseCaseImage:
+		return []string{
+			"Generate one image (512×512): ~10-30 seconds (depends on pipeline)",
+			"Generate a high-res image (1024×1024): ~30-90 seconds",
+			"Create 4 variations of a concept: ~1-3 minutes",
+		}
+	case UseCaseVideo:
+		return []string{
+			"Generate a 2-second clip: ~2-10 minutes (depends on resolution)",
+			"Generate a 4-second clip: ~5-20 minutes",
+			"Higher resolution = significantly longer",
+		}
+	case UseCaseAudio:
+		return []string{
+			"Transcribe 1 minute of audio: ~5-15 seconds",
+			"Transcribe a 30-minute meeting: ~3-8 minutes",
+			"Generate a spoken sentence (TTS): ~2-5 seconds",
+		}
+	case UseCaseNSFW:
+		return []string{
+			"Quick reply: " + fmtTime(80),
+			"Generate a short story (~500 words): " + fmtTime(700),
+			"Long creative writing (~2000 words): " + fmtTime(2800),
+		}
+	}
+	return nil
 }
 
 // qualityRating converts a quality score to a human-readable rating.

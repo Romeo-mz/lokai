@@ -1,3 +1,12 @@
+// Package models — static model catalog.
+//
+// Hand-curated database of Ollama-compatible models with quality scores,
+// VRAM estimates, and use-case mappings.
+//
+// Sources:
+//   Ollama Library — https://ollama.com/search
+//   Model cards    — https://huggingface.co
+//   Benchmarks     — https://huggingface.co/spaces/open-llm-leaderboard/open_llm_leaderboard
 package models
 
 import "github.com/romeo-mz/lokai/internal/hardware"
