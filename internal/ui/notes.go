@@ -1,20 +1,84 @@
 package ui
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+	"path/filepath"
 
-// ShowVideoPipelineNote displays an informational box explaining that video
-// generation models require a separate diffusion pipeline.
-func ShowVideoPipelineNote() {
-	note := SubtitleStyle.Render("🎬 Video Generation — Pipeline Required") + "\n\n" +
-		"   Video generation models do NOT run as standard Ollama chat models.\n" +
-		"   They require a diffusion pipeline such as:\n\n" +
-		"   " + ValueStyle.Render("ComfyUI") + "        — " + MutedStyle.Render("https://github.com/comfyanonymous/ComfyUI") + "\n" +
-		"   " + ValueStyle.Render("A1111 WebUI") + "    — " + MutedStyle.Render("https://github.com/AUTOMATIC1111/stable-diffusion-webui") + "\n" +
-		"   " + ValueStyle.Render("Forge WebUI") + "    — " + MutedStyle.Render("https://github.com/lllyasviel/stable-diffusion-webui-forge") + "\n\n" +
-		MutedStyle.Render("   Ollama pulls the model weights; you then load them in your pipeline of choice.")
+	"github.com/romeo-mz/lokai/internal/comfyui"
+)
 
+// ShowComfyUIPipelineNote displays ComfyUI status and setup guidance for
+// image or video models. It detects ComfyUI, shows its state, provides
+// model-specific download instructions, and saves a ready-to-use workflow.
+func ShowComfyUIPipelineNote(modelFamily string, useCase string) {
+	st := comfyui.Detect()
+
+	// Header.
+	title := "🖼  Image Generation — ComfyUI Pipeline"
+	if useCase == "video" {
+		title = "🎬 Video Generation — ComfyUI Pipeline"
+	}
 	fmt.Println()
-	fmt.Println(WarningBoxStyle.Render(note))
+	fmt.Println(SubtitleStyle.Render(title))
+	fmt.Println()
+
+	// ComfyUI status.
+	if st.Running {
+		ver := ""
+		if st.Version != "" {
+			ver = " v" + st.Version
+		}
+		fmt.Println("   " + SuccessStyle.Render("✓ ComfyUI is running"+ver+" at "+st.ServerAddr))
+	} else if st.Installed {
+		fmt.Println("   " + WarningStyle.Render("⚠ ComfyUI found at "+st.InstallPath+" but not running"))
+		fmt.Println("   " + MutedStyle.Render("Start it with:  cd "+st.InstallPath+" && python main.py"))
+	} else {
+		fmt.Println("   " + ErrorStyle.Render("✗ ComfyUI not detected"))
+		fmt.Println()
+		fmt.Println("   " + ValueStyle.Render("Install ComfyUI:"))
+		fmt.Println()
+		fmt.Println(comfyui.InstallInstructions())
+		fmt.Println()
+		fmt.Println("   " + MutedStyle.Render("Or set COMFYUI_PATH to your existing installation"))
+	}
+	fmt.Println()
+
+	// Model-specific download info.
+	source, destSubdir := comfyui.ModelDownloadInfo(modelFamily)
+	if source != "" {
+		fmt.Println(SubtitleStyle.Render("  📦 Model Weights"))
+		fmt.Println()
+		fmt.Println("   Download from: " + ValueStyle.Render(source))
+		if st.InstallPath != "" {
+			dest := filepath.Join(st.InstallPath, destSubdir)
+			fmt.Println("   Place in:      " + ValueStyle.Render(dest))
+		} else {
+			fmt.Println("   Place in:      " + ValueStyle.Render("ComfyUI/"+destSubdir))
+		}
+		fmt.Println()
+	}
+
+	// Generate and save workflow.
+	workflow := comfyui.WorkflowForModel(modelFamily, "A beautiful landscape, high quality, detailed")
+
+	home, _ := os.UserHomeDir()
+	workflowDir := filepath.Join(home, ".cache", "lokai", "workflows")
+	workflowFile := filepath.Join(workflowDir, modelFamily+"_workflow.json")
+
+	if err := comfyui.SaveWorkflow(workflowFile, workflow); err == nil {
+		fmt.Println(SubtitleStyle.Render("  🔧 Ready-to-Use Workflow"))
+		fmt.Println()
+		fmt.Println("   Saved to: " + ValueStyle.Render(workflowFile))
+		fmt.Println("   " + MutedStyle.Render("Import this file into ComfyUI (drag & drop or Load button)"))
+
+		// If ComfyUI is running, offer to queue the workflow.
+		if st.Running {
+			fmt.Println()
+			fmt.Println("   " + SuccessStyle.Render("→ ComfyUI is running — you can import and run this workflow now!"))
+		}
+	}
+
 	fmt.Println()
 }
 
@@ -47,22 +111,6 @@ func ShowHereticSuggestion() {
 	fmt.Println("   " + ValueStyle.Render("CivitAI") + "        — " + MutedStyle.Render("https://civitai.com (browse NSFW checkpoints & LoRAs)"))
 	fmt.Println()
 	fmt.Println(MutedStyle.Render("   These tools run locally and support full creative freedom."))
-	fmt.Println()
-}
-
-// ShowImagePipelineNote displays an informational box explaining that image
-// generation models require a separate diffusion pipeline.
-func ShowImagePipelineNote() {
-	note := SubtitleStyle.Render("🖼  Image Generation — Pipeline Required") + "\n\n" +
-		"   Image generation models do NOT run as standard Ollama chat models.\n" +
-		"   They require a diffusion pipeline such as:\n\n" +
-		"   " + ValueStyle.Render("ComfyUI") + "        — " + MutedStyle.Render("https://github.com/comfyanonymous/ComfyUI") + "\n" +
-		"   " + ValueStyle.Render("A1111 WebUI") + "    — " + MutedStyle.Render("https://github.com/AUTOMATIC1111/stable-diffusion-webui") + "\n" +
-		"   " + ValueStyle.Render("Forge WebUI") + "    — " + MutedStyle.Render("https://github.com/lllyasviel/stable-diffusion-webui-forge") + "\n\n" +
-		MutedStyle.Render("   Ollama pulls the model weights; you then load them in your pipeline of choice.")
-
-	fmt.Println()
-	fmt.Println(WarningBoxStyle.Render(note))
 	fmt.Println()
 }
 

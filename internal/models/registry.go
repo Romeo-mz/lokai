@@ -46,6 +46,8 @@ func NewRegistry() *Registry {
 // Refresh fetches fresh model data from Ollama and GitHub, merges it
 // with the static catalog, and writes the result to the disk cache.
 // If the cache is still fresh (< 24 h), this is a no-op.
+// If the network is unreachable but cached data exists, the cached data
+// is used silently (offline fallback).
 func (r *Registry) Refresh(ctx context.Context) error {
 	r.mu.RLock()
 	fresh := time.Since(r.lastRefresh) < registryCacheTTL && len(r.dynamic) > 0
@@ -56,8 +58,8 @@ func (r *Registry) Refresh(ctx context.Context) error {
 
 	var discovered []DiscoveredModel
 
-	ollamaModels, err := FetchOllamaModels(ctx)
-	if err == nil {
+	ollamaModels, ollamaErr := FetchOllamaModels(ctx)
+	if ollamaErr == nil {
 		discovered = append(discovered, ollamaModels...)
 	}
 
@@ -65,7 +67,14 @@ func (r *Registry) Refresh(ctx context.Context) error {
 	discovered = append(discovered, githubModels...)
 
 	if len(discovered) == 0 {
-		return fmt.Errorf("no models discovered from any source")
+		// Network failed — fall back to cached data if available.
+		r.mu.RLock()
+		hasCached := len(r.dynamic) > 0
+		r.mu.RUnlock()
+		if hasCached {
+			return nil // silently use stale cache
+		}
+		return fmt.Errorf("no models discovered (offline and no cache)")
 	}
 
 	entries := mergeDiscovered(discovered)
@@ -76,7 +85,7 @@ func (r *Registry) Refresh(ctx context.Context) error {
 	r.mu.Unlock()
 
 	r.saveCache()
-	return err
+	return nil
 }
 
 // DynamicCount returns how many extra models were found beyond the static catalog.

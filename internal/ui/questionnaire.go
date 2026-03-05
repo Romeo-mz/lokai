@@ -18,6 +18,7 @@ type UserPreferences struct {
 }
 
 // RunQuestionnaire displays the interactive use-case selection form.
+// Pressing Escape on any page goes back to the previous page.
 func RunQuestionnaire(specs *hardware.HardwareSpecs) (*UserPreferences, error) {
 	prefs := &UserPreferences{}
 
@@ -26,81 +27,94 @@ func RunQuestionnaire(specs *hardware.HardwareSpecs) (*UserPreferences, error) {
 	var priority string
 	var includeRemote bool
 
-	form := huh.NewForm(
-		// Page 1: Use case selection.
-		huh.NewGroup(
-			huh.NewSelect[string]().
-				Title("What do you need a local AI model for?").
-				Description("Select the primary task for your model").
-				Options(
-					huh.NewOption("💬 Chat — General conversation & Q&A", "chat"),
-					huh.NewOption("💻 Code — Code generation, completion & review", "code"),
-					huh.NewOption("👁 Vision — Image understanding & analysis", "vision"),
-					huh.NewOption("📐 Embedding — Text embeddings for RAG / search", "embedding"),
-					huh.NewOption("🧠 Reasoning — Complex problem-solving & math", "reasoning"),
-					huh.NewOption("🖼  Image Gen — Image generation (Stable Diffusion, FLUX)", "image"),
-					huh.NewOption("🎬 Video — Video generation (requires ComfyUI pipeline)", "video"),
-					huh.NewOption("🎙  Audio — Speech-to-text & text-to-speech", "audio"),
-					huh.NewOption("🔓 Uncensored — Models without content filters (NSFW)", "nsfw"),
-				).
-				Value(&useCase),
-		),
-	)
+	step := 0
+	for {
+		switch step {
+		case 0: // Page 1: Use case selection.
+			form := huh.NewForm(
+				huh.NewGroup(
+					huh.NewSelect[string]().
+						Title("What do you need a local AI model for?").
+						Description("Select the primary task for your model").
+						Options(
+							huh.NewOption("💬 Chat — General conversation & Q&A", "chat"),
+							huh.NewOption("💻 Code — Code generation, completion & review", "code"),
+							huh.NewOption("👁 Vision — Image understanding & analysis", "vision"),
+							huh.NewOption("📐 Embedding — Text embeddings for RAG / search", "embedding"),
+							huh.NewOption("🧠 Reasoning — Complex problem-solving & math", "reasoning"),
+							huh.NewOption("🖼  Image Gen — Image generation (Stable Diffusion, FLUX)", "image"),
+							huh.NewOption("🎬 Video — Video generation (requires ComfyUI pipeline)", "video"),
+							huh.NewOption("🎙  Audio — Speech-to-text & text-to-speech", "audio"),
+							huh.NewOption("🔓 Uncensored — Models without content filters (NSFW)", "nsfw"),
+						).
+						Value(&useCase),
+				),
+			)
 
-	if err := form.Run(); err != nil {
-		return nil, fmt.Errorf("questionnaire cancelled: %w", err)
-	}
+			if err := form.Run(); err != nil {
+				return nil, fmt.Errorf("questionnaire cancelled: %w", err)
+			}
+			step++
 
-	// Page 2: Sub-task selection (context-sensitive based on use case).
-	subTaskOptions := subTasksForUseCase(hardware.UseCase(useCase))
-	if len(subTaskOptions) > 0 {
-		subForm := huh.NewForm(
-			huh.NewGroup(
-				huh.NewSelect[string]().
-					Title("What will you mainly use it for?").
-					Description("This helps us pick the perfect model for your needs").
-					Options(subTaskOptions...).
-					Value(&subTask),
-			),
-		)
-		if err := subForm.Run(); err != nil {
-			return nil, fmt.Errorf("questionnaire cancelled: %w", err)
+		case 1: // Page 2: Sub-task selection (context-sensitive).
+			subTaskOptions := subTasksForUseCase(hardware.UseCase(useCase))
+			if len(subTaskOptions) == 0 {
+				step++ // skip if no sub-tasks for this use case
+				continue
+			}
+
+			subForm := huh.NewForm(
+				huh.NewGroup(
+					huh.NewSelect[string]().
+						Title("What will you mainly use it for?").
+						Description("This helps us pick the perfect model for your needs  (esc ← back)").
+						Options(subTaskOptions...).
+						Value(&subTask),
+				),
+			)
+			if err := subForm.Run(); err != nil {
+				subTask = "" // reset
+				step--       // go back to use case
+				continue
+			}
+			step++
+
+		case 2: // Page 3: Priority + include remote.
+			restForm := huh.NewForm(
+				huh.NewGroup(
+					huh.NewSelect[string]().
+						Title("What's your priority?").
+						Description("This affects which model size we recommend  (esc ← back)").
+						Options(
+							huh.NewOption("⚡ Speed — Fastest possible response time", "speed"),
+							huh.NewOption("⚖️  Balanced — Good quality with reasonable speed", "balanced"),
+							huh.NewOption("🏆 Quality — Best output quality (larger model)", "quality"),
+						).
+						Value(&priority),
+				),
+				huh.NewGroup(
+					huh.NewConfirm().
+						Title("Include models not yet downloaded?").
+						Description("Show all compatible models, not just locally installed ones").
+						Affirmative("Yes, show all").
+						Negative("No, only installed").
+						Value(&includeRemote),
+				),
+			)
+
+			if err := restForm.Run(); err != nil {
+				priority = "" // reset
+				step--        // go back to sub-task (or use case if no sub-tasks)
+				continue
+			}
+
+			prefs.UseCase = hardware.UseCase(useCase)
+			prefs.SubTask = models.SubTask(subTask)
+			prefs.Priority = models.Priority(priority)
+			prefs.IncludeRemote = includeRemote
+			return prefs, nil
 		}
 	}
-
-	// Page 3: Priority + include remote.
-	restForm := huh.NewForm(
-		huh.NewGroup(
-			huh.NewSelect[string]().
-				Title("What's your priority?").
-				Description("This affects which model size we recommend").
-				Options(
-					huh.NewOption("⚡ Speed — Fastest possible response time", "speed"),
-					huh.NewOption("⚖️  Balanced — Good quality with reasonable speed", "balanced"),
-					huh.NewOption("🏆 Quality — Best output quality (larger model)", "quality"),
-				).
-				Value(&priority),
-		),
-		huh.NewGroup(
-			huh.NewConfirm().
-				Title("Include models not yet downloaded?").
-				Description("Show all compatible models, not just locally installed ones").
-				Affirmative("Yes, show all").
-				Negative("No, only installed").
-				Value(&includeRemote),
-		),
-	)
-
-	if err := restForm.Run(); err != nil {
-		return nil, fmt.Errorf("questionnaire cancelled: %w", err)
-	}
-
-	prefs.UseCase = hardware.UseCase(useCase)
-	prefs.SubTask = models.SubTask(subTask)
-	prefs.Priority = models.Priority(priority)
-	prefs.IncludeRemote = includeRemote
-
-	return prefs, nil
 }
 
 // subTasksForUseCase returns the sub-task options for a given use case.

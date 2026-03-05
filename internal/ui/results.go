@@ -37,12 +37,17 @@ func DisplayResults(recs []models.Recommendation, specs *hardware.HardwareSpecs,
 
 		est := models.EstimatePerformance(rec.Model, specs)
 
+		speedStr := fmt.Sprintf("~%.0f tok/s", est.TokensPerSecond)
+		if est.Measured {
+			speedStr = fmt.Sprintf("%.1f tok/s ✓", est.TokensPerSecond)
+		}
+
 		rows = append(rows, []string{
 			rank,
 			rec.Model.OllamaTag,
 			rec.Model.ParameterSize,
 			vramStr,
-			fmt.Sprintf("~%.0f tok/s", est.TokensPerSecond),
+			speedStr,
 			est.QualityRating,
 			rec.Reason,
 		})

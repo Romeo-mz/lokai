@@ -2,6 +2,7 @@
 //
 // Estimates token generation speed, time-to-first-token, and
 // human-friendly task durations based on hardware specs.
+// When real benchmark data is available, measured values override heuristics.
 //
 // Sources:
 //   GPU benchmarks  — https://github.com/XiongjieDai/GPU-Benchmarks-on-LLM-Inference
@@ -11,9 +12,38 @@ package models
 import (
 	"fmt"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/romeo-mz/lokai/internal/hardware"
 )
+
+// Baseline holds real measured performance data for a model.
+type Baseline struct {
+	TokensPerSecond  float64
+	TimeToFirstToken time.Duration
+}
+
+var (
+	baselineMu sync.RWMutex
+	baselines  = map[string]Baseline{}
+)
+
+// SetBaselines stores real benchmark measurements keyed by OllamaTag.
+// When available, EstimatePerformance uses these instead of heuristics.
+func SetBaselines(b map[string]Baseline) {
+	baselineMu.Lock()
+	baselines = b
+	baselineMu.Unlock()
+}
+
+// getBaseline returns measured data for a model, if available.
+func getBaseline(tag string) (Baseline, bool) {
+	baselineMu.RLock()
+	b, ok := baselines[tag]
+	baselineMu.RUnlock()
+	return b, ok
+}
 
 // PerformanceEstimate holds estimated generation speed and timing.
 type PerformanceEstimate struct {
@@ -22,21 +52,37 @@ type PerformanceEstimate struct {
 	GenerationTime   string `json:"generation_time"`     // e.g. "~12s for 500 tokens"
 	QualityRating    string `json:"quality_rating"`      // "Low", "Medium", "High", "Excellent"
 	Notes            string `json:"notes,omitempty"`
+	Measured         bool   `json:"measured"` // true = from real benchmarks, false = heuristic
 }
 
 // EstimatePerformance predicts generation speed for a model on given hardware.
+// If real benchmark data is available (via SetBaselines), it uses measured
+// values; otherwise it falls back to hardware-based heuristics.
 func EstimatePerformance(model ModelEntry, specs *hardware.HardwareSpecs) PerformanceEstimate {
 	tokPerSec := estimateTokensPerSecond(model, specs)
+	ttft := estimateTimeToFirstToken(model, specs)
+	measured := false
+
+	// Override with real measurements when available.
+	if bl, ok := getBaseline(model.OllamaTag); ok {
+		tokPerSec = bl.TokensPerSecond
+		ttft = fmt.Sprintf("%.2fs", bl.TimeToFirstToken.Seconds())
+		measured = true
+	}
 
 	est := PerformanceEstimate{
 		TokensPerSecond:  tokPerSec,
-		TimeToFirstToken: estimateTimeToFirstToken(model, specs),
+		TimeToFirstToken: ttft,
 		GenerationTime:   estimateGenerationTime(tokPerSec),
 		QualityRating:    qualityRating(model.Quality),
+		Measured:         measured,
 	}
 
 	// Add notes for special cases.
 	var notes []string
+	if measured {
+		notes = append(notes, "Based on real benchmark data from your hardware")
+	}
 	if !specs.HasGPU && !specs.IsAppleSilicon {
 		notes = append(notes, "CPU-only inference — significantly slower than GPU")
 	}

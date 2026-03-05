@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/romeo-mz/lokai/internal/benchmark"
 	"github.com/romeo-mz/lokai/internal/cache"
 	"github.com/romeo-mz/lokai/internal/hardware"
 	"github.com/romeo-mz/lokai/internal/models"
@@ -96,12 +97,22 @@ func main() {
 
 	// Refresh model registry from Ollama + GitHub (best-effort, 5s timeout).
 	reg := models.NewRegistry()
+	cachedCount := reg.DynamicCount()
 	refreshCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	if err := reg.Refresh(refreshCtx); err == nil && reg.DynamicCount() > 0 {
-		fmt.Println(ui.MutedStyle.Render(fmt.Sprintf("  ✓ Discovered %d additional models from Ollama & GitHub", reg.DynamicCount())))
+	refreshErr := reg.Refresh(refreshCtx)
+	cancel()
+
+	if refreshErr == nil && reg.DynamicCount() > 0 {
+		if cachedCount > 0 && cachedCount == reg.DynamicCount() {
+			fmt.Println(ui.MutedStyle.Render(fmt.Sprintf("  ✓ %d additional models available (cached)", reg.DynamicCount())))
+		} else {
+			fmt.Println(ui.MutedStyle.Render(fmt.Sprintf("  ✓ Discovered %d additional models from Ollama & GitHub", reg.DynamicCount())))
+		}
+		fmt.Println()
+	} else if cachedCount > 0 {
+		fmt.Println(ui.MutedStyle.Render(fmt.Sprintf("  ✓ %d additional models available (offline, using cache)", cachedCount)))
 		fmt.Println()
 	}
-	cancel()
 
 	// Get recommendations (uses dynamic catalog if available, else static).
 	var catalog []models.ModelEntry
@@ -117,6 +128,27 @@ func main() {
 		Catalog:       catalog,
 	})
 
+	// Load real performance baselines from benchmark cache (if available).
+	if store, err := cache.New(); err == nil {
+		var cached struct {
+			Results []benchmark.Result `json:"results"`
+		}
+		if store.Get("benchmarks", &cached) && len(cached.Results) > 0 {
+			bl := make(map[string]models.Baseline)
+			for _, r := range cached.Results {
+				if r.Success {
+					bl[r.ModelTag] = models.Baseline{
+						TokensPerSecond:  r.EvalRate,
+						TimeToFirstToken: r.TimeToFirstToken,
+					}
+				}
+			}
+			if len(bl) > 0 {
+				models.SetBaselines(bl)
+			}
+		}
+	}
+
 	// Display results and get user selection.
 	selectedModel, wantInstall, err := ui.DisplayResults(recs, specs, prefs.UseCase)
 	if err != nil {
@@ -125,11 +157,16 @@ func main() {
 	}
 
 	// Show context-specific notes.
-	if prefs.UseCase == hardware.UseCaseVideo {
-		ui.ShowVideoPipelineNote()
-	}
-	if prefs.UseCase == hardware.UseCaseImage {
-		ui.ShowImagePipelineNote()
+	if prefs.UseCase == hardware.UseCaseVideo || prefs.UseCase == hardware.UseCaseImage {
+		// Find the selected model's family for ComfyUI workflow generation.
+		modelFamily := ""
+		for _, rec := range recs {
+			if rec.Model.OllamaTag == selectedModel {
+				modelFamily = rec.Model.Family
+				break
+			}
+		}
+		ui.ShowComfyUIPipelineNote(modelFamily, string(prefs.UseCase))
 	}
 	if prefs.UseCase == hardware.UseCaseAudio {
 		ui.ShowAudioPipelineNote()

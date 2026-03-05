@@ -158,10 +158,18 @@ func (m selectorModel) renderPerformancePanel() string {
 
 	var b strings.Builder
 
-	b.WriteString(headerStyle.Render("  📊 Performance Estimate — " + rec.Model.OllamaTag))
+	prefix := "📊 Performance Estimate"
+	if est.Measured {
+		prefix = "📊 Measured Performance"
+	}
+	b.WriteString(headerStyle.Render("  "+prefix+" — "+rec.Model.OllamaTag))
 	b.WriteString("\n\n")
 
-	b.WriteString("  " + labelStyle.Render("Speed") + valueStyle.Render(fmt.Sprintf("~%.1f tokens/sec", est.TokensPerSecond)) + "\n")
+	speedLabel := fmt.Sprintf("~%.1f tokens/sec", est.TokensPerSecond)
+	if est.Measured {
+		speedLabel = fmt.Sprintf("%.1f tokens/sec ✓", est.TokensPerSecond)
+	}
+	b.WriteString("  " + labelStyle.Render("Speed") + valueStyle.Render(speedLabel) + "\n")
 	b.WriteString("  " + labelStyle.Render("First response") + valueStyle.Render(est.TimeToFirstToken) + "\n")
 	b.WriteString("  " + labelStyle.Render("Quality") + valueStyle.Render(est.QualityRating) + "\n")
 
