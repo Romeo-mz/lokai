@@ -12,18 +12,19 @@ package models
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/romeo-mz/lokai/internal/cache"
 )
 
-const cacheTTL = 24 * time.Hour
+const registryCacheTTL = 24 * time.Hour
+
+const registryCacheKey = "registry"
 
 // Registry manages a dynamic model catalog that merges the static
 // built-in entries with models discovered from online sources.
@@ -31,21 +32,13 @@ type Registry struct {
 	mu          sync.RWMutex
 	dynamic     []ModelEntry
 	lastRefresh time.Time
-	cacheFile   string
+	store       *cache.Store
 }
 
 // NewRegistry creates a Registry, loading any previously cached data.
 func NewRegistry() *Registry {
-	cacheDir, err := os.UserCacheDir()
-	if err != nil {
-		cacheDir = os.TempDir()
-	}
-	dir := filepath.Join(cacheDir, "lokai")
-	_ = os.MkdirAll(dir, 0o755)
-
-	r := &Registry{
-		cacheFile: filepath.Join(dir, "models.json"),
-	}
+	store, _ := cache.New()
+	r := &Registry{store: store}
 	r.loadCache()
 	return r
 }
@@ -55,7 +48,7 @@ func NewRegistry() *Registry {
 // If the cache is still fresh (< 24 h), this is a no-op.
 func (r *Registry) Refresh(ctx context.Context) error {
 	r.mu.RLock()
-	fresh := time.Since(r.lastRefresh) < cacheTTL && len(r.dynamic) > 0
+	fresh := time.Since(r.lastRefresh) < registryCacheTTL && len(r.dynamic) > 0
 	r.mu.RUnlock()
 	if fresh {
 		return nil
@@ -303,21 +296,20 @@ func titleCase(s string) string {
 }
 
 // ──────────────────────────────────────────────────────────────────────
-// Disk cache
+// Disk cache (via shared cache.Store)
 // ──────────────────────────────────────────────────────────────────────
 
-type cachePayload struct {
+type registryCachePayload struct {
 	Models      []ModelEntry `json:"models"`
 	LastRefresh time.Time    `json:"last_refresh"`
 }
 
 func (r *Registry) loadCache() {
-	data, err := os.ReadFile(r.cacheFile)
-	if err != nil {
+	if r.store == nil {
 		return
 	}
-	var c cachePayload
-	if err := json.Unmarshal(data, &c); err != nil {
+	var c registryCachePayload
+	if !r.store.Get(registryCacheKey, &c) {
 		return
 	}
 	r.mu.Lock()
@@ -327,16 +319,15 @@ func (r *Registry) loadCache() {
 }
 
 func (r *Registry) saveCache() {
+	if r.store == nil {
+		return
+	}
 	r.mu.RLock()
-	c := cachePayload{
+	c := registryCachePayload{
 		Models:      r.dynamic,
 		LastRefresh: r.lastRefresh,
 	}
 	r.mu.RUnlock()
 
-	data, err := json.MarshalIndent(c, "", "  ")
-	if err != nil {
-		return
-	}
-	_ = os.WriteFile(r.cacheFile, data, 0o644)
+	_ = r.store.Set(registryCacheKey, c, registryCacheTTL)
 }

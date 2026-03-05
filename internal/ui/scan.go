@@ -3,21 +3,47 @@ package ui
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/lipgloss/table"
 
+	"github.com/romeo-mz/lokai/internal/cache"
 	"github.com/romeo-mz/lokai/internal/hardware"
 )
 
-// ScanAndDisplay runs hardware detection with a spinner, then displays results.
+const (
+	hwCacheKey = "hardware"
+	hwCacheTTL = 1 * time.Hour
+)
+
+// ScanAndDisplay runs hardware detection with caching, then displays results.
+// Cached data is reused for up to 1 hour.
 func ScanAndDisplay(ctx context.Context) (*hardware.HardwareSpecs, error) {
+	store, _ := cache.New()
+
+	// Try cache first.
+	if store != nil {
+		var cached hardware.HardwareSpecs
+		if store.Get(hwCacheKey, &cached) {
+			fmt.Println(SubtitleStyle.Render("⚙ Hardware (cached)"))
+			fmt.Println()
+			displaySpecs(&cached)
+			return &cached, nil
+		}
+	}
+
 	fmt.Println(SubtitleStyle.Render("⚙ Scanning hardware..."))
 	fmt.Println()
 
 	specs, err := hardware.Detect(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("hardware detection failed: %w", err)
+	}
+
+	// Save to cache.
+	if store != nil {
+		_ = store.Set(hwCacheKey, specs, hwCacheTTL)
 	}
 
 	displaySpecs(specs)

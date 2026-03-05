@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/romeo-mz/lokai/internal/cache"
 	"github.com/romeo-mz/lokai/internal/hardware"
 	"github.com/romeo-mz/lokai/internal/models"
 	"github.com/romeo-mz/lokai/internal/ollama"
@@ -22,8 +23,19 @@ func main() {
 
 	wantClean := len(os.Args) > 1 && (os.Args[1] == "--clean" || os.Args[1] == "clean")
 	wantBenchmark := len(os.Args) > 1 && (os.Args[1] == "--benchmark" || os.Args[1] == "benchmark")
+	wantClearCache := len(os.Args) > 1 && (os.Args[1] == "--clear-cache" || os.Args[1] == "clear-cache")
 
 	ctx := context.Background()
+
+	// Handle --clear-cache: wipe all local cached data.
+	if wantClearCache {
+		store, err := cache.New()
+		if err == nil {
+			_ = store.Clear()
+			fmt.Println("✓ Cache cleared (" + store.Dir() + ")")
+		}
+		return
+	}
 
 	// Print banner.
 	fmt.Println(ui.Banner())
