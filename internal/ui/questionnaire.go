@@ -12,6 +12,7 @@ import (
 // UserPreferences holds the user's selections from the questionnaire.
 type UserPreferences struct {
 	UseCase       hardware.UseCase
+	SubTask       models.SubTask
 	Priority      models.Priority
 	IncludeRemote bool
 }
@@ -21,6 +22,7 @@ func RunQuestionnaire(specs *hardware.HardwareSpecs) (*UserPreferences, error) {
 	prefs := &UserPreferences{}
 
 	var useCase string
+	var subTask string
 	var priority string
 	var includeRemote bool
 
@@ -36,14 +38,38 @@ func RunQuestionnaire(specs *hardware.HardwareSpecs) (*UserPreferences, error) {
 					huh.NewOption("👁 Vision — Image understanding & analysis", "vision"),
 					huh.NewOption("📐 Embedding — Text embeddings for RAG / search", "embedding"),
 					huh.NewOption("🧠 Reasoning — Complex problem-solving & math", "reasoning"),
-				huh.NewOption("🖼  Image Gen — Image generation (Stable Diffusion, FLUX)", "image"),
-				huh.NewOption("🎬 Video — Video generation (requires ComfyUI pipeline)", "video"),
-				huh.NewOption("🎙  Audio — Speech-to-text & text-to-speech", "audio"),
-				huh.NewOption("🔓 Unrestricted — Models without content filters (Unrestricted)", "unrestricted"),				).
+					huh.NewOption("🖼  Image Gen — Image generation (Stable Diffusion, FLUX)", "image"),
+					huh.NewOption("🎬 Video — Video generation (requires ComfyUI pipeline)", "video"),
+					huh.NewOption("🎙  Audio — Speech-to-text & text-to-speech", "audio"),
+					huh.NewOption("🔓 Unrestricted — Models without content filters (Unrestricted)", "unrestricted"),
+				).
 				Value(&useCase),
 		),
+	)
 
-		// Page 2: Priority.
+	if err := form.Run(); err != nil {
+		return nil, fmt.Errorf("questionnaire cancelled: %w", err)
+	}
+
+	// Page 2: Sub-task selection (context-sensitive based on use case).
+	subTaskOptions := subTasksForUseCase(hardware.UseCase(useCase))
+	if len(subTaskOptions) > 0 {
+		subForm := huh.NewForm(
+			huh.NewGroup(
+				huh.NewSelect[string]().
+					Title("What will you mainly use it for?").
+					Description("This helps us pick the perfect model for your needs").
+					Options(subTaskOptions...).
+					Value(&subTask),
+			),
+		)
+		if err := subForm.Run(); err != nil {
+			return nil, fmt.Errorf("questionnaire cancelled: %w", err)
+		}
+	}
+
+	// Page 3: Priority + include remote.
+	restForm := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title("What's your priority?").
@@ -55,8 +81,6 @@ func RunQuestionnaire(specs *hardware.HardwareSpecs) (*UserPreferences, error) {
 				).
 				Value(&priority),
 		),
-
-		// Page 3: Include remote models.
 		huh.NewGroup(
 			huh.NewConfirm().
 				Title("Include models not yet downloaded?").
@@ -67,14 +91,62 @@ func RunQuestionnaire(specs *hardware.HardwareSpecs) (*UserPreferences, error) {
 		),
 	)
 
-	err := form.Run()
-	if err != nil {
+	if err := restForm.Run(); err != nil {
 		return nil, fmt.Errorf("questionnaire cancelled: %w", err)
 	}
 
 	prefs.UseCase = hardware.UseCase(useCase)
+	prefs.SubTask = models.SubTask(subTask)
 	prefs.Priority = models.Priority(priority)
 	prefs.IncludeRemote = includeRemote
 
 	return prefs, nil
+}
+
+// subTasksForUseCase returns the sub-task options for a given use case.
+func subTasksForUseCase(uc hardware.UseCase) []huh.Option[string] {
+	switch uc {
+	case hardware.UseCaseChat:
+		return []huh.Option[string]{
+			huh.NewOption("💬 Quick Q&A — Short answers, lookups", string(models.SubTaskQuickQA)),
+			huh.NewOption("✉️  Writing — Emails, essays, articles", string(models.SubTaskWriting)),
+			huh.NewOption("🎨 Creative — Stories, poetry, role-play", string(models.SubTaskCreative)),
+			huh.NewOption("🌍 Translation — Between languages", string(models.SubTaskTranslation)),
+			huh.NewOption("📚 Summarization — Condense long texts", string(models.SubTaskSummarization)),
+		}
+	case hardware.UseCaseCode:
+		return []huh.Option[string]{
+			huh.NewOption("⚡ Autocomplete — Fast inline suggestions", string(models.SubTaskAutocomplete)),
+			huh.NewOption("🏗  Project Gen — Build full pages/components", string(models.SubTaskProjectGen)),
+			huh.NewOption("🔍 Code Review — Review & refactor existing code", string(models.SubTaskCodeReview)),
+			huh.NewOption("🐛 Debugging — Find and fix bugs", string(models.SubTaskDebugging)),
+			huh.NewOption("📝 Documentation — Generate docs & comments", string(models.SubTaskDocumentation)),
+		}
+	case hardware.UseCaseVision:
+		return []huh.Option[string]{
+			huh.NewOption("📸 Photo Analysis — Describe images & scenes", string(models.SubTaskPhotoAnalysis)),
+			huh.NewOption("📄 OCR / Document — Read text from images", string(models.SubTaskOCR)),
+			huh.NewOption("📊 Charts & Diagrams — Interpret visual data", string(models.SubTaskChartAnalysis)),
+		}
+	case hardware.UseCaseReasoning:
+		return []huh.Option[string]{
+			huh.NewOption("🔢 Math — Equations, calculations, proofs", string(models.SubTaskMath)),
+			huh.NewOption("🧩 Logic — Puzzles, word problems, deductions", string(models.SubTaskLogic)),
+			huh.NewOption("📋 Planning — Step-by-step plans, strategies", string(models.SubTaskPlanning)),
+			huh.NewOption("🔬 Research — Analysis, comparisons, deep-dives", string(models.SubTaskResearch)),
+		}
+	case hardware.UseCaseImage:
+		return []huh.Option[string]{
+			huh.NewOption("📷 Photorealistic — Lifelike photos", string(models.SubTaskPhotorealistic)),
+			huh.NewOption("🎨 Artistic — Stylized, illustrations, concept art", string(models.SubTaskArtistic)),
+			huh.NewOption("⚡ Fast Drafts — Quick iterations, low res", string(models.SubTaskFastDrafts)),
+		}
+	case hardware.UseCaseAudio:
+		return []huh.Option[string]{
+			huh.NewOption("🎤 Transcription — Speech to text", string(models.SubTaskTranscription)),
+			huh.NewOption("🔊 Text to Speech — Generate spoken audio", string(models.SubTaskTTS)),
+		}
+	default:
+		return nil
+	}
 }
