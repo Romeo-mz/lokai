@@ -84,13 +84,14 @@ func main() {
 	// Get recommendations.
 	recs := models.Recommend(specs, models.RecommendOptions{
 		UseCase:       prefs.UseCase,
+		SubTask:       prefs.SubTask,
 		Priority:      prefs.Priority,
 		IncludeRemote: prefs.IncludeRemote,
 		MaxResults:    5,
 	})
 
 	// Display results and get user selection.
-	selectedModel, wantInstall, err := ui.DisplayResults(recs, specs)
+	selectedModel, wantInstall, err := ui.DisplayResults(recs, specs, prefs.UseCase)
 	if err != nil {
 		fmt.Println(ui.ErrorStyle.Render("✗ " + err.Error()))
 		os.Exit(1)
