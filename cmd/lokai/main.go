@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/romeo-mz/lokai/internal/hardware"
 	"github.com/romeo-mz/lokai/internal/models"
@@ -81,13 +82,27 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Get recommendations.
+	// Refresh model registry from Ollama + GitHub (best-effort, 5s timeout).
+	reg := models.NewRegistry()
+	refreshCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	if err := reg.Refresh(refreshCtx); err == nil && reg.DynamicCount() > 0 {
+		fmt.Println(ui.MutedStyle.Render(fmt.Sprintf("  ✓ Discovered %d additional models from Ollama & GitHub", reg.DynamicCount())))
+		fmt.Println()
+	}
+	cancel()
+
+	// Get recommendations (uses dynamic catalog if available, else static).
+	var catalog []models.ModelEntry
+	if reg.DynamicCount() > 0 {
+		catalog = reg.FullCatalog()
+	}
 	recs := models.Recommend(specs, models.RecommendOptions{
 		UseCase:       prefs.UseCase,
 		SubTask:       prefs.SubTask,
 		Priority:      prefs.Priority,
 		IncludeRemote: prefs.IncludeRemote,
 		MaxResults:    5,
+		Catalog:       catalog,
 	})
 
 	// Display results and get user selection.

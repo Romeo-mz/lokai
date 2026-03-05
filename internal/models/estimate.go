@@ -1,3 +1,11 @@
+// Package models — performance estimation.
+//
+// Estimates token generation speed, time-to-first-token, and
+// human-friendly task durations based on hardware specs.
+//
+// Sources:
+//   GPU benchmarks  — https://github.com/XiongjieDai/GPU-Benchmarks-on-LLM-Inference
+//   Ollama perf FAQ — https://github.com/ollama/ollama/blob/main/docs/faq.md
 package models
 
 import (

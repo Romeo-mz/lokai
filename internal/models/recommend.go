@@ -1,3 +1,10 @@
+// Package models — recommendation engine.
+//
+// Sources:
+//   Static catalog  — internal/models/database.go (hand-curated)
+//   Ollama Registry — https://registry.ollama.ai/v2/library (dynamic)
+//   Ollama Library  — https://ollama.com/search (dynamic)
+//   GitHub API      — https://api.github.com/search/repositories (dynamic)
 package models
 
 import (
@@ -60,8 +67,9 @@ type RecommendOptions struct {
 	UseCase          UseCase
 	SubTask          SubTask
 	Priority         Priority
-	IncludeRemote    bool // Include models not yet downloaded
-	MaxResults       int  // Max recommendations to return (default: 5)
+	IncludeRemote    bool         // Include models not yet downloaded
+	MaxResults       int          // Max recommendations to return (default: 5)
+	Catalog          []ModelEntry // Optional dynamic catalog (from Registry); nil = static
 }
 
 // Recommend returns the best models for the given hardware and preferences.
@@ -70,8 +78,20 @@ func Recommend(specs *hardware.HardwareSpecs, opts RecommendOptions) []Recommend
 		opts.MaxResults = 5
 	}
 
-	// Get all models for this use case.
-	candidates := GetModelsByUseCase(opts.UseCase)
+	// Use provided dynamic catalog or fall back to the static one.
+	var candidates []ModelEntry
+	if len(opts.Catalog) > 0 {
+		for _, m := range opts.Catalog {
+			for _, uc := range m.UseCases {
+				if uc == opts.UseCase {
+					candidates = append(candidates, m)
+					break
+				}
+			}
+		}
+	} else {
+		candidates = GetModelsByUseCase(opts.UseCase)
+	}
 	if len(candidates) == 0 {
 		return nil
 	}
