@@ -4,7 +4,6 @@
 
 **Find the best local AI model for your hardware — automatically**
 
-[![CI](https://github.com/romeo-mz/lokai/actions/workflows/ci.yml/badge.svg)](https://github.com/romeo-mz/lokai/actions/workflows/ci.yml)
 [![Go](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat&logo=go)](https://go.dev)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/romeo-mz/lokai?style=flat)](https://github.com/romeo-mz/lokai/releases)
@@ -13,7 +12,7 @@
 Scan your hardware → Pick a use case → Get the best local AI model.
 No guesswork. No VRAM spreadsheets. Just run `lokai`.
 
-**76 models • 9 use cases • Every GPU from Raspberry Pi to workstation**
+**A lot of models • 9 use cases • Every GPU from Raspberry Pi to workstation**
 
 </div>
 
