@@ -100,7 +100,7 @@ func QueuePrompt(ctx context.Context, workflow map[string]any) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("ComfyUI not reachable: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("ComfyUI returned HTTP %d", resp.StatusCode)
@@ -128,7 +128,7 @@ func ListModels(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ComfyUI not reachable: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Parse the nested response to extract checkpoint names.
 	var info map[string]struct {
@@ -220,7 +220,7 @@ func fetchSystemStats(addr string) (*SystemStats, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)

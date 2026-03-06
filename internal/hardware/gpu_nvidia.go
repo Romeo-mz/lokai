@@ -15,7 +15,7 @@ func enrichNVIDIA(specs *HardwareSpecs) {
 		// NVIDIA driver not available — not an error, just skip.
 		return
 	}
-	defer nvml.Shutdown()
+	defer func() { _ = nvml.Shutdown() }()
 
 	count, ret := nvml.DeviceGetCount()
 	if ret != nvml.SUCCESS {

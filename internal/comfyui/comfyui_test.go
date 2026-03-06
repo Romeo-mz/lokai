@@ -10,8 +10,8 @@ import (
 func TestIsComfyUIDir(t *testing.T) {
 	t.Run("valid dir with main.py and comfy", func(t *testing.T) {
 		dir := t.TempDir()
-		os.WriteFile(filepath.Join(dir, "main.py"), []byte("# comfyui"), 0o644)
-		os.MkdirAll(filepath.Join(dir, "comfy"), 0o755)
+		_ = os.WriteFile(filepath.Join(dir, "main.py"), []byte("# comfyui"), 0o644)
+		_ = os.MkdirAll(filepath.Join(dir, "comfy"), 0o755)
 
 		if !isComfyUIDir(dir) {
 			t.Error("should detect valid ComfyUI dir")
@@ -20,8 +20,8 @@ func TestIsComfyUIDir(t *testing.T) {
 
 	t.Run("valid dir with main.py and comfy_extras", func(t *testing.T) {
 		dir := t.TempDir()
-		os.WriteFile(filepath.Join(dir, "main.py"), []byte("# comfyui"), 0o644)
-		os.MkdirAll(filepath.Join(dir, "comfy_extras"), 0o755)
+		_ = os.WriteFile(filepath.Join(dir, "main.py"), []byte("# comfyui"), 0o644)
+		_ = os.MkdirAll(filepath.Join(dir, "comfy_extras"), 0o755)
 
 		if !isComfyUIDir(dir) {
 			t.Error("should detect dir with comfy_extras")
@@ -30,7 +30,7 @@ func TestIsComfyUIDir(t *testing.T) {
 
 	t.Run("missing main.py", func(t *testing.T) {
 		dir := t.TempDir()
-		os.MkdirAll(filepath.Join(dir, "comfy"), 0o755)
+		_ = os.MkdirAll(filepath.Join(dir, "comfy"), 0o755)
 
 		if isComfyUIDir(dir) {
 			t.Error("should not detect dir without main.py")
@@ -39,7 +39,7 @@ func TestIsComfyUIDir(t *testing.T) {
 
 	t.Run("only main.py no comfy dir", func(t *testing.T) {
 		dir := t.TempDir()
-		os.WriteFile(filepath.Join(dir, "main.py"), []byte("# not comfy"), 0o644)
+		_ = os.WriteFile(filepath.Join(dir, "main.py"), []byte("# not comfy"), 0o644)
 
 		if isComfyUIDir(dir) {
 			t.Error("should not detect dir without comfy/ or comfy_extras/")

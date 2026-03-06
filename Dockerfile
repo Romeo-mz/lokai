@@ -1,6 +1,3 @@
-# ──────────────────────────────────────────
-# Build stage
-# ──────────────────────────────────────────
 FROM golang:1.24-alpine AS builder
 
 RUN apk add --no-cache git ca-certificates
@@ -15,9 +12,6 @@ RUN CGO_ENABLED=0 go build \
     -ldflags "-s -w -X main.version=${VERSION}" \
     -o /lokai ./cmd/lokai
 
-# ──────────────────────────────────────────
-# Runtime stage
-# ──────────────────────────────────────────
 FROM alpine:3.20
 
 RUN apk add --no-cache ca-certificates tzdata

@@ -1,7 +1,6 @@
 package ollama
 
 import (
-	"fmt"
 	"os/exec"
 	"runtime"
 )
@@ -35,7 +34,7 @@ func CheckInstallation() InstallStatus {
 func GetInstallInstructions() string {
 	switch runtime.GOOS {
 	case "darwin":
-		return fmt.Sprintf(`Ollama is not installed. Install it with:
+		return `Ollama is not installed. Install it with:
 
   brew install ollama
 
@@ -43,10 +42,10 @@ Or download from: https://ollama.com/download/mac
 
 Then start the server:
 
-  ollama serve`)
+  ollama serve`
 
 	case "linux":
-		return fmt.Sprintf(`Ollama is not installed. Install it with:
+		return `Ollama is not installed. Install it with:
 
   curl -fsSL https://ollama.com/install.sh | sh
 
@@ -56,18 +55,18 @@ Then start the server:
 
 Or run as a systemd service:
 
-  sudo systemctl start ollama`)
+  sudo systemctl start ollama`
 
 	case "windows":
-		return fmt.Sprintf(`Ollama is not installed. Install it with:
+		return `Ollama is not installed. Install it with:
 
   winget install Ollama.Ollama
 
 Or download from: https://ollama.com/download/windows
 
-The server starts automatically after installation.`)
+The server starts automatically after installation.`
 
 	default:
-		return fmt.Sprintf(`Ollama is not installed. Download from: https://ollama.com/download`)
+		return `Ollama is not installed. Download from: https://ollama.com/download`
 	}
 }
