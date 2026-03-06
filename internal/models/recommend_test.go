@@ -201,4 +201,159 @@ func TestEstimatePerformance(t *testing.T) {
 	if est.TimeToFirstToken == "" {
 		t.Error("TimeToFirstToken should not be empty")
 	}
+	if est.Measured {
+		t.Error("Measured should be false without baselines")
+	}
+}
+
+func TestEstimatePerformanceWithBaselines(t *testing.T) {
+	model := ModelEntry{
+		Name: "Test Model", OllamaTag: "test:7b",
+		ParameterCount: 7.0, Quality: 60, EstimatedVRAMGB: 6.0,
+	}
+
+	specs := &hardware.HardwareSpecs{
+		HasGPU:          true,
+		AvailableVRAMGB: 12.0,
+		GPUs: []hardware.GPUInfo{
+			{Vendor: hardware.GPUVendorNVIDIA, VRAMTotalGB: 12.0},
+		},
+	}
+
+	// Set baselines.
+	SetBaselines(map[string]Baseline{
+		"test:7b": {TokensPerSecond: 42.5, TimeToFirstToken: 250000000}, // 250ms
+	})
+	defer SetBaselines(nil)
+
+	est := EstimatePerformance(model, specs)
+
+	if !est.Measured {
+		t.Error("Measured should be true when baseline exists")
+	}
+	if est.TokensPerSecond != 42.5 {
+		t.Errorf("TokensPerSecond = %.1f, want 42.5", est.TokensPerSecond)
+	}
+}
+
+func TestGetBaselineNotFound(t *testing.T) {
+	SetBaselines(map[string]Baseline{})
+	defer SetBaselines(nil)
+
+	_, ok := getBaseline("nonexistent:model")
+	if ok {
+		t.Error("getBaseline should return false for missing tag")
+	}
+}
+
+func TestEstimatePerformanceCPUOnly(t *testing.T) {
+	model := ModelEntry{
+		Name: "Test Model", ParameterCount: 3.0,
+		Quality: 40, EstimatedVRAMGB: 2.0,
+	}
+
+	specs := &hardware.HardwareSpecs{
+		AvailableVRAMGB: 0,
+		RAMTotalGB:      16.0,
+		RAMAvailableGB:  12.0,
+		CPUCores:        8,
+		HasAVX2:         true,
+	}
+
+	est := EstimatePerformance(model, specs)
+
+	if est.TokensPerSecond <= 0 {
+		t.Errorf("TokensPerSecond should be positive for CPU, got %.1f", est.TokensPerSecond)
+	}
+	if est.TimeToFirstToken == "" {
+		t.Error("TimeToFirstToken should not be empty")
+	}
+}
+
+func TestInferParamCount(t *testing.T) {
+	tests := []struct {
+		input string
+		want  float64
+	}{
+		{"8b", 8},
+		{"3.8b", 3.8},
+		{"70b-instruct", 70},
+		{"135m", 0.135},
+		{"latest", 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := inferParamCount(tt.input)
+			if got != tt.want {
+				t.Errorf("inferParamCount(%q) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestInferUseCases(t *testing.T) {
+	tests := []struct {
+		name string
+		desc string
+		want UseCase
+	}{
+		{"codellama", "code model", UseCaseCode},
+		{"nomic-embed", "embedding model", UseCaseEmbedding},
+		{"llava", "vision model", UseCaseVision},
+		{"whisper", "audio model", UseCaseAudio},
+		{"flux", "image gen", UseCaseImage},
+		{"wan", "video gen", UseCaseVideo},
+		{"dolphin", "uncensored", UseCaseNSFW},
+		{"deepseek-r1", "reasoning model", UseCaseReasoning},
+		{"llama3", "general chat", UseCaseChat},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := inferUseCases(tt.name, tt.desc)
+			if len(got) == 0 {
+				t.Fatal("inferUseCases returned empty")
+			}
+			if got[0] != tt.want {
+				t.Errorf("inferUseCases(%q, %q) = %v, want %v", tt.name, tt.desc, got[0], tt.want)
+			}
+		})
+	}
+}
+
+func TestRealWorldTasks(t *testing.T) {
+	tasks := RealWorldTasks(UseCaseChat, 30.0)
+	if len(tasks) == 0 {
+		t.Error("RealWorldTasks should return tasks for Chat")
+	}
+	for _, task := range tasks {
+		if task == "" {
+			t.Error("task string should not be empty")
+		}
+	}
+
+	// Zero tok/sec should return nil.
+	if tasks := RealWorldTasks(UseCaseChat, 0); tasks != nil {
+		t.Errorf("Expected nil for 0 tok/sec, got %v", tasks)
+	}
+}
+
+func TestQualityRating(t *testing.T) {
+	tests := []struct {
+		quality int
+		want    string
+	}{
+		{90, "Excellent"},
+		{70, "High"},
+		{50, "Medium"},
+		{20, "Low"},
+	}
+
+	for _, tt := range tests {
+		got := qualityRating(tt.quality)
+		if got != tt.want {
+			t.Errorf("qualityRating(%d) = %q, want %q", tt.quality, got, tt.want)
+		}
+	}
 }
