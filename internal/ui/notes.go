@@ -1,6 +1,10 @@
 package ui
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/romeo-mz/lokai/internal/models"
+)
 
 // ShowVideoPipelineNote displays an informational box explaining that video
 // generation models require a separate diffusion pipeline.
@@ -77,6 +81,55 @@ func ShowAudioPipelineNote() {
 		MutedStyle.Render("   Ollama can serve some audio models; others need the tools above.")
 
 	fmt.Println()
+	fmt.Println(WarningBoxStyle.Render(note))
+	fmt.Println()
+}
+
+// ShowExternalModelInstructions prints step-by-step setup guidance for models
+// that require a dedicated inference pipeline (e.g. ComfyUI for diffusion models)
+// instead of the standard "ollama pull" workflow.
+func ShowExternalModelInstructions(entry models.ModelEntry) {
+	fmt.Println()
+
+	// Determine whether this is a video or image generation model.
+	isVideo := false
+	for _, cap := range entry.Capabilities {
+		if cap == "video-generation" {
+			isVideo = true
+			break
+		}
+	}
+
+	var title string
+	switch entry.Pipeline {
+	case "comfyui":
+		if isVideo {
+			title = "🎬 " + entry.Name + " — Video Generation Pipeline"
+		} else {
+			title = "🖼  " + entry.Name + " — Image Generation Pipeline"
+		}
+	default:
+		title = "⚙  " + entry.Name + " — External Pipeline Required"
+	}
+
+	note := SubtitleStyle.Render(title) + "\n\n" +
+		"   This model cannot be installed via \"ollama pull\".\n" +
+		"   It requires a dedicated diffusion pipeline to run.\n\n"
+
+	if entry.Pipeline == "comfyui" {
+		note += "   " + SubtitleStyle.Render("Step 1 — Download the model weights") + "\n" +
+			"   " + ValueStyle.Render(entry.ExternalURL) + "\n\n" +
+			"   " + SubtitleStyle.Render("Step 2 — Install a pipeline") + "\n" +
+			"   " + ValueStyle.Render("ComfyUI") + "        — " + MutedStyle.Render("https://github.com/comfyanonymous/ComfyUI") + "\n" +
+			"   " + ValueStyle.Render("A1111 WebUI") + "    — " + MutedStyle.Render("https://github.com/AUTOMATIC1111/stable-diffusion-webui") + "\n" +
+			"   " + ValueStyle.Render("Forge WebUI") + "    — " + MutedStyle.Render("https://github.com/lllyasviel/stable-diffusion-webui-forge") + "\n\n" +
+			"   " + SubtitleStyle.Render("Step 3 — Load the model in your pipeline") + "\n" +
+			MutedStyle.Render("   Place the downloaded weights in the pipeline's models/checkpoints directory\n") +
+			MutedStyle.Render("   and select it from the UI. ComfyUI also supports drag-and-drop workflows.")
+	} else if entry.ExternalURL != "" {
+		note += "   " + ValueStyle.Render(entry.ExternalURL) + "\n"
+	}
+
 	fmt.Println(WarningBoxStyle.Render(note))
 	fmt.Println()
 }

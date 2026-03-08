@@ -37,9 +37,13 @@ func DisplayResults(recs []models.Recommendation, specs *hardware.HardwareSpecs,
 
 		est := models.EstimatePerformance(rec.Model, specs)
 
+		modelDisplay := rec.Model.OllamaTag
+		if !rec.Model.IsPullable() {
+			modelDisplay = rec.Model.OllamaTag + MutedStyle.Render(" (ComfyUI)")
+		}
 		rows = append(rows, []string{
 			rank,
-			rec.Model.OllamaTag,
+			modelDisplay,
 			rec.Model.ParameterSize,
 			vramStr,
 			fmt.Sprintf("~%.0f tok/s", est.TokensPerSecond),

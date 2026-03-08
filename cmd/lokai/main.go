@@ -124,28 +124,39 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Show context-specific notes.
-	if prefs.UseCase == hardware.UseCaseVideo {
-		ui.ShowVideoPipelineNote()
-	}
-	if prefs.UseCase == hardware.UseCaseImage {
-		ui.ShowImagePipelineNote()
-	}
-	if prefs.UseCase == hardware.UseCaseAudio {
-		ui.ShowAudioPipelineNote()
-	}
-
 	if selectedModel == "" {
+		// No model selected — show pipeline context notes as guidance, then exit.
+		if prefs.UseCase == hardware.UseCaseVideo {
+			ui.ShowVideoPipelineNote()
+		}
+		if prefs.UseCase == hardware.UseCaseImage {
+			ui.ShowImagePipelineNote()
+		}
+		if prefs.UseCase == hardware.UseCaseAudio {
+			ui.ShowAudioPipelineNote()
+		}
 		fmt.Println(ui.MutedStyle.Render("No model selected. Goodbye!"))
 		return
 	}
 
-	if wantInstall {
-		if err := ui.PullWithProgress(ctx, client, selectedModel); err != nil {
-			os.Exit(1)
-		}
+	// Look up the full catalog entry to decide the correct install path.
+	entry := models.GetModelByTag(selectedModel)
+	if entry != nil && !entry.IsPullable() {
+		// External model (diffusion / non-Ollama) — cannot use "ollama pull".
+		// Show dedicated pipeline setup instructions instead.
+		ui.ShowExternalModelInstructions(*entry)
 	} else {
-		ui.ShowInstallInstructions(selectedModel)
+		// Standard Ollama model — pull and run via ollama.
+		if wantInstall {
+			if err := ui.PullWithProgress(ctx, client, selectedModel); err != nil {
+				os.Exit(1)
+			}
+		} else {
+			ui.ShowInstallInstructions(selectedModel)
+		}
+		if prefs.UseCase == hardware.UseCaseAudio {
+			ui.ShowAudioPipelineNote()
+		}
 	}
 
 	// Show heretic suggestion for unrestricted use case.

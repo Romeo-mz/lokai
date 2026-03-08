@@ -49,7 +49,17 @@ type ModelEntry struct {
 	Capabilities    []string  `json:"capabilities"`     // "tools", "vision", "thinking", etc.
 	Quality         int       `json:"quality"`          // Quality score 1-100 (higher = better)
 	Description     string    `json:"description"`      // Short description
+	// IsExternal marks models that cannot be installed via "ollama pull"
+	// (e.g. diffusion models that need ComfyUI, whisper.cpp, etc.).
+	IsExternal  bool   `json:"is_external,omitempty"`
+	// ExternalURL is the HuggingFace or project page for non-Ollama models.
+	ExternalURL string `json:"external_url,omitempty"`
+	// Pipeline is the required inference software (e.g. "comfyui", "whisper.cpp").
+	Pipeline    string `json:"pipeline,omitempty"`
 }
+
+// IsPullable returns true when the model can be installed via "ollama pull".
+func (m ModelEntry) IsPullable() bool { return !m.IsExternal }
 
 // Catalog is the built-in model database.
 // Ordered roughly by quality within each category.
@@ -448,8 +458,8 @@ var Catalog = []ModelEntry{
 
 	// ═══════════════════════════════════════════
 	// IMAGE GENERATION
-	// Note: These models use diffusion pipelines (ComfyUI, A1111)
-	// and are not standard Ollama chat models.
+	// Note: These models use diffusion pipelines (ComfyUI, A1111).
+	// They are NOT Ollama chat models — use IsExternal + Pipeline fields.
 	// ═══════════════════════════════════════════
 	{
 		Name: "Stable Diffusion 3.5 Large Turbo", OllamaTag: "sd3.5-large-turbo", Family: "sd3",
@@ -457,6 +467,8 @@ var Catalog = []ModelEntry{
 		DiskSizeGB: 16.0, EstimatedVRAMGB: 12.0,
 		UseCases: []UseCase{UseCaseImage}, Capabilities: []string{"image-generation"},
 		Quality: 72, Description: "Stability AI's fast image generation — 4 steps",
+		IsExternal: true, Pipeline: "comfyui",
+		ExternalURL: "https://huggingface.co/stabilityai/stable-diffusion-3.5-large-turbo",
 	},
 	{
 		Name: "Stable Diffusion 3.5 Large", OllamaTag: "sd3.5-large", Family: "sd3",
@@ -464,6 +476,8 @@ var Catalog = []ModelEntry{
 		DiskSizeGB: 16.0, EstimatedVRAMGB: 16.0,
 		UseCases: []UseCase{UseCaseImage}, Capabilities: []string{"image-generation"},
 		Quality: 78, Description: "Stability AI's high-quality image generation",
+		IsExternal: true, Pipeline: "comfyui",
+		ExternalURL: "https://huggingface.co/stabilityai/stable-diffusion-3.5-large",
 	},
 	{
 		Name: "FLUX.1 Schnell", OllamaTag: "flux-schnell", Family: "flux",
@@ -471,6 +485,8 @@ var Catalog = []ModelEntry{
 		DiskSizeGB: 24.0, EstimatedVRAMGB: 16.0,
 		UseCases: []UseCase{UseCaseImage}, Capabilities: []string{"image-generation"},
 		Quality: 80, Description: "Black Forest Labs' fast image generation — 4 steps",
+		IsExternal: true, Pipeline: "comfyui",
+		ExternalURL: "https://huggingface.co/black-forest-labs/FLUX.1-schnell",
 	},
 	{
 		Name: "FLUX.1 Dev", OllamaTag: "flux-dev", Family: "flux",
@@ -478,6 +494,8 @@ var Catalog = []ModelEntry{
 		DiskSizeGB: 24.0, EstimatedVRAMGB: 24.0,
 		UseCases: []UseCase{UseCaseImage}, Capabilities: []string{"image-generation"},
 		Quality: 88, Description: "Black Forest Labs' high-quality image generation — 30+ steps",
+		IsExternal: true, Pipeline: "comfyui",
+		ExternalURL: "https://huggingface.co/black-forest-labs/FLUX.1-dev",
 	},
 	{
 		Name: "PixArt Sigma XL 2", OllamaTag: "pixart-sigma", Family: "pixart",
@@ -485,6 +503,8 @@ var Catalog = []ModelEntry{
 		DiskSizeGB: 2.5, EstimatedVRAMGB: 6.0,
 		UseCases: []UseCase{UseCaseImage}, Capabilities: []string{"image-generation"},
 		Quality: 55, Description: "Lightweight diffusion transformer — fast on low-VRAM GPUs",
+		IsExternal: true, Pipeline: "comfyui",
+		ExternalURL: "https://huggingface.co/PixArt-alpha/PixArt-Sigma",
 	},
 	{
 		Name: "SDXL 1.0", OllamaTag: "sdxl", Family: "sdxl",
@@ -492,19 +512,23 @@ var Catalog = []ModelEntry{
 		DiskSizeGB: 7.0, EstimatedVRAMGB: 8.0,
 		UseCases: []UseCase{UseCaseImage}, Capabilities: []string{"image-generation"},
 		Quality: 65, Description: "Classic high-resolution image generation — huge LoRA ecosystem",
+		IsExternal: true, Pipeline: "comfyui",
+		ExternalURL: "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0",
 	},
 
 	// ═══════════════════════════════════════════
 	// VIDEO GENERATION
-	// Note: These models use diffusion pipelines (ComfyUI, A1111)
-	// and are not standard Ollama chat models.
+	// Note: These models use diffusion pipelines (ComfyUI).
+	// They are NOT Ollama chat models — use IsExternal + Pipeline fields.
 	// ═══════════════════════════════════════════
 	{
 		Name: "Wan 2.1 1.3B", OllamaTag: "wan2.1:1.3b", Family: "wan",
 		ParameterSize: "1.3B", ParameterCount: 1.3, QuantLevel: "F16",
 		DiskSizeGB: 2.8, EstimatedVRAMGB: 4.0,
 		UseCases: []UseCase{UseCaseVideo}, Capabilities: []string{"video-generation"},
-		Quality: 30, Description: "Tiny text-to-video model — requires ComfyUI or similar pipeline",
+		Quality: 30, Description: "Tiny text-to-video model — run via ComfyUI",
+		IsExternal: true, Pipeline: "comfyui",
+		ExternalURL: "https://huggingface.co/Wan-AI/Wan2.1-T2V-1.3B",
 	},
 	{
 		Name: "LTX Video 0.9B", OllamaTag: "ltx-video", Family: "ltx",
@@ -512,6 +536,8 @@ var Catalog = []ModelEntry{
 		DiskSizeGB: 2.0, EstimatedVRAMGB: 6.0,
 		UseCases: []UseCase{UseCaseVideo}, Capabilities: []string{"video-generation"},
 		Quality: 40, Description: "Lightricks' fast text-to-video — real-time capable",
+		IsExternal: true, Pipeline: "comfyui",
+		ExternalURL: "https://huggingface.co/Lightricks/LTX-Video",
 	},
 	{
 		Name: "CogVideoX 5B", OllamaTag: "cogvideox:5b", Family: "cogvideo",
@@ -519,6 +545,8 @@ var Catalog = []ModelEntry{
 		DiskSizeGB: 10.0, EstimatedVRAMGB: 12.0,
 		UseCases: []UseCase{UseCaseVideo}, Capabilities: []string{"video-generation"},
 		Quality: 55, Description: "Tsinghua's diffusion transformer for video generation",
+		IsExternal: true, Pipeline: "comfyui",
+		ExternalURL: "https://huggingface.co/THUDM/CogVideoX-5b",
 	},
 	{
 		Name: "HunyuanVideo 13B", OllamaTag: "hunyuan-video", Family: "hunyuan",
@@ -526,13 +554,17 @@ var Catalog = []ModelEntry{
 		DiskSizeGB: 26.0, EstimatedVRAMGB: 24.0,
 		UseCases: []UseCase{UseCaseVideo}, Capabilities: []string{"video-generation"},
 		Quality: 70, Description: "Tencent's high-quality text-to-video model",
+		IsExternal: true, Pipeline: "comfyui",
+		ExternalURL: "https://huggingface.co/tencent/HunyuanVideo",
 	},
 	{
 		Name: "Wan 2.1 14B", OllamaTag: "wan2.1:14b", Family: "wan",
 		ParameterSize: "14B", ParameterCount: 14.0, QuantLevel: "F16",
 		DiskSizeGB: 28.0, EstimatedVRAMGB: 32.0,
 		UseCases: []UseCase{UseCaseVideo}, Capabilities: []string{"video-generation"},
-		Quality: 75, Description: "Full text-to-video model — requires ComfyUI or similar pipeline",
+		Quality: 75, Description: "Full text-to-video model — run via ComfyUI",
+		IsExternal: true, Pipeline: "comfyui",
+		ExternalURL: "https://huggingface.co/Wan-AI/Wan2.1-T2V-14B",
 	},
 
 	// ═══════════════════════════════════════════
