@@ -1,7 +1,6 @@
 package ollama
 
 import (
-	"fmt"
 	"os/exec"
 	"runtime"
 )
@@ -68,6 +67,6 @@ Or download from: https://ollama.com/download/windows
 The server starts automatically after installation.`
 
 	default:
-		return fmt.Sprintf(`Ollama is not installed. Download from: https://ollama.com/download`)
+		return `Ollama is not installed. Download from: https://ollama.com/download`
 	}
 }
