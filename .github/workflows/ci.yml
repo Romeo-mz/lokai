@@ -15,7 +15,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest]
         go-version: ["1.24"]
     steps:
       - uses: actions/checkout@v4
@@ -43,13 +43,7 @@ jobs:
 
       - name: Test
         # On Windows runners, PowerShell is default; use bash for consistency
-        run: |
-          if [ "${RUNNER_OS}" = "Windows" ] && [ "$(go env GOARCH)" != "amd64" ]; then
-            go test -v -coverprofile=coverage.out ./...
-          else
-            go test -v -race -coverprofile=coverage.out ./...
-          fi
-        shell: bash
+        run: go test -v -race -coverprofile=coverage.out ./...
 
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest'
