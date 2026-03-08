@@ -43,8 +43,6 @@ jobs:
 
       - name: Test
         # On Windows runners, PowerShell is default; use bash for consistency
-        # Some Windows environments may not support -race for certain toolchains,
-        # so skip -race on non-amd64 or when unsupported.
         run: |
           if [ "${RUNNER_OS}" = "Windows" ] && [ "$(go env GOARCH)" != "amd64" ]; then
             go test -v -coverprofile=coverage.out ./...

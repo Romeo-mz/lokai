@@ -105,7 +105,7 @@ func displaySpecs(specs *hardware.HardwareSpecs) {
 	rows = append(rows, []string{budgetLabel, fmt.Sprintf("%.1f GB available for models", specs.AvailableVRAMGB)})
 
 	// Hardware tier.
-	rows = append(rows, []string{"Hardware Tier", fmt.Sprintf("%s", specs.Tier())})
+	rows = append(rows, []string{"Hardware Tier", "%s", specs.Tier()})
 
 	// Virtualization.
 	if specs.IsVirtualized {
