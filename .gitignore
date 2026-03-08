@@ -26,3 +26,7 @@ Thumbs.db
 
 # Build
 dist/
+
+# Built binary (local test output of go build ./cmd/lokai)
+/lokai
+/lokai-*
