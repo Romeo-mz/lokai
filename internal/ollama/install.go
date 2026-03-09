@@ -1,6 +1,7 @@
 package ollama
 
 import (
+	"os"
 	"os/exec"
 	"runtime"
 )
@@ -19,6 +20,14 @@ func CheckInstallation() InstallStatus {
 
 	// Check if ollama binary is in PATH.
 	path, err := exec.LookPath("ollama")
+	if err != nil {
+		// Check if running in Docker container via environment variable
+		if os.Getenv("OLLAMA_HOST") != "" {
+			status.Installed = true
+			status.BinaryPath = "ollama (container)"
+			return status
+		}
+	}
 	if err != nil {
 		status.ErrorMessage = "Ollama is not installed"
 		return status
@@ -58,7 +67,7 @@ Or run as a systemd service:
   sudo systemctl start ollama`
 
 	case "windows":
-		return 	`Ollama is not installed. Install it with:
+		return `Ollama is not installed. Install it with:
 
   winget install Ollama.Ollama
 

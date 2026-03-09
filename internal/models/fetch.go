@@ -1,9 +1,10 @@
 // Package models — dynamic model discovery.
 //
 // Sources:
-//   Ollama Registry — https://registry.ollama.ai/v2/library/{model}/tags/list
-//   Ollama Library  — https://ollama.com/search
-//   GitHub API      — https://api.github.com/search/repositories
+//
+//	Ollama Registry — https://registry.ollama.ai/v2/library/{model}/tags/list
+//	Ollama Library  — https://ollama.com/search
+//	GitHub API      — https://api.github.com/search/repositories
 package models
 
 import (
@@ -31,7 +32,7 @@ type DiscoveredModel struct {
 	Tags        []string `json:"tags,omitempty"`
 	Description string   `json:"description,omitempty"`
 	Stars       int      `json:"stars,omitempty"`
-	Source      string   `json:"source"`     // "ollama", "ollama-registry", "github"
+	Source      string   `json:"source"` // "ollama", "ollama-registry", "github"
 	SourceURL   string   `json:"source_url,omitempty"`
 }
 

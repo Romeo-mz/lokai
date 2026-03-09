@@ -4,15 +4,24 @@ services:
     image: ollama/ollama:latest
     ports:
       - "11434:11434"
+    # Run as root so the volume mount is always writable.
+    user: root
+    environment:
+      # Force model storage into the writable Docker volume, not the host snap
+      # directory (/var/snap/ollama/...) which the container cannot write to.
+      - OLLAMA_MODELS=/root/.ollama/models
     volumes:
       - ollama_data:/root/.ollama
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+      # Mount host CA bundle so "ollama pull" can verify TLS certificates even
+      # when the host uses a custom or corporate CA chain.
+      - /etc/ssl/certs:/etc/ssl/certs:ro
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
 
   # lokai CLI
   lokai:

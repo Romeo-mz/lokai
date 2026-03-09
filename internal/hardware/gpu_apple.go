@@ -32,25 +32,25 @@ func estimateAppleGPUCores(model string) int {
 	// Apple Silicon GPU core counts (approximate):
 	coreMap := map[string]int{
 		// M1 family
-		"M1":         8,
-		"M1 Pro":     16,
-		"M1 Max":     32,
-		"M1 Ultra":   64,
+		"M1":       8,
+		"M1 Pro":   16,
+		"M1 Max":   32,
+		"M1 Ultra": 64,
 		// M2 family
-		"M2":         10,
-		"M2 Pro":     19,
-		"M2 Max":     38,
-		"M2 Ultra":   76,
+		"M2":       10,
+		"M2 Pro":   19,
+		"M2 Max":   38,
+		"M2 Ultra": 76,
 		// M3 family
-		"M3":         10,
-		"M3 Pro":     18,
-		"M3 Max":     40,
-		"M3 Ultra":   80,
+		"M3":       10,
+		"M3 Pro":   18,
+		"M3 Max":   40,
+		"M3 Ultra": 80,
 		// M4 family
-		"M4":         10,
-		"M4 Pro":     20,
-		"M4 Max":     40,
-		"M4 Ultra":   80,
+		"M4":       10,
+		"M4 Pro":   20,
+		"M4 Max":   40,
+		"M4 Ultra": 80,
 	}
 
 	for chip, cores := range coreMap {

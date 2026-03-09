@@ -152,8 +152,8 @@ lokai --use-case chat --priority quality
 ## How It Works
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌────────────────┐     ┌──────────────┐
-│  Hardware    │────▶│  Use Case    │────▶│  Recommend     │────▶│  Install /   │
+┌──────────────┐     ┌──────────────┐     ┌────────────────┐     ┌──────────────┐
+│  Hardware    │───► │  Use Case    │────►│  Recommend     │────►│  Install /   │
 │  Detection   │     │  Selection   │     │  Engine        │     │  Benchmark   │
 │              │     │              │     │                │     │              │
 │  • CPU/RAM   │     │  • Chat      │     │  • Filter by   │     │  ollama pull │
@@ -165,7 +165,7 @@ lokai --use-case chat --priority quality
 │              │     │  • Video     │     │                │     │              │
 │              │     │  • Audio     │     │                │     │              │
 │              │     │  • NSFW      │     │                │     │              │
-└─────────────┘     └──────────────┘     └────────────────┘     └──────────────┘
+└──────────────┘     └──────────────┘     └────────────────┘     └──────────────┘
 ```
 
 ## Benchmarking
