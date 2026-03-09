@@ -15,12 +15,12 @@ type Client struct {
 
 // ModelInfo holds information about a locally installed model.
 type ModelInfo struct {
-	Name           string   `json:"name"`
-	ParameterSize  string   `json:"parameter_size"`
-	QuantLevel     string   `json:"quant_level"`
-	Family         string   `json:"family"`
-	SizeOnDisk     int64    `json:"size_on_disk"`
-	Capabilities   []string `json:"capabilities,omitempty"`
+	Name          string   `json:"name"`
+	ParameterSize string   `json:"parameter_size"`
+	QuantLevel    string   `json:"quant_level"`
+	Family        string   `json:"family"`
+	SizeOnDisk    int64    `json:"size_on_disk"`
+	Capabilities  []string `json:"capabilities,omitempty"`
 }
 
 // PullProgress reports download progress during model pull.

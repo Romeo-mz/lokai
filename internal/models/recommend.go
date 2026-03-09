@@ -1,10 +1,11 @@
 // Package models — recommendation engine.
 //
 // Sources:
-//   Static catalog  — internal/models/database.go (hand-curated)
-//   Ollama Registry — https://registry.ollama.ai/v2/library (dynamic)
-//   Ollama Library  — https://ollama.com/search (dynamic)
-//   GitHub API      — https://api.github.com/search/repositories (dynamic)
+//
+//	Static catalog  — internal/models/database.go (hand-curated)
+//	Ollama Registry — https://registry.ollama.ai/v2/library (dynamic)
+//	Ollama Library  — https://ollama.com/search (dynamic)
+//	GitHub API      — https://api.github.com/search/repositories (dynamic)
 package models
 
 import (
@@ -55,21 +56,21 @@ const (
 
 // Recommendation represents a recommended model with scoring details.
 type Recommendation struct {
-	Model       ModelEntry `json:"model"`
-	Score       float64    `json:"score"`        // 0-100 composite score
-	FitsInVRAM  bool       `json:"fits_in_vram"`
-	VRAMUsage   float64    `json:"vram_usage_pct"` // Percentage of available VRAM used
-	Reason      string     `json:"reason"`         // Human-readable explanation
+	Model      ModelEntry `json:"model"`
+	Score      float64    `json:"score"` // 0-100 composite score
+	FitsInVRAM bool       `json:"fits_in_vram"`
+	VRAMUsage  float64    `json:"vram_usage_pct"` // Percentage of available VRAM used
+	Reason     string     `json:"reason"`         // Human-readable explanation
 }
 
 // RecommendOptions configures the recommendation engine.
 type RecommendOptions struct {
-	UseCase          UseCase
-	SubTask          SubTask
-	Priority         Priority
-	IncludeRemote    bool         // Include models not yet downloaded
-	MaxResults       int          // Max recommendations to return (default: 5)
-	Catalog          []ModelEntry // Optional dynamic catalog (from Registry); nil = static
+	UseCase       UseCase
+	SubTask       SubTask
+	Priority      Priority
+	IncludeRemote bool         // Include models not yet downloaded
+	MaxResults    int          // Max recommendations to return (default: 5)
+	Catalog       []ModelEntry // Optional dynamic catalog (from Registry); nil = static
 }
 
 // Recommend returns the best models for the given hardware and preferences.

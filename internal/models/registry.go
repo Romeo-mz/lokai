@@ -5,9 +5,10 @@
 // disk so subsequent runs don't need network access.
 //
 // Sources:
-//   Ollama Registry — https://registry.ollama.ai/v2/library
-//   Ollama Library  — https://ollama.com/search
-//   GitHub API      — https://api.github.com/search/repositories
+//
+//	Ollama Registry — https://registry.ollama.ai/v2/library
+//	Ollama Library  — https://ollama.com/search
+//	GitHub API      — https://api.github.com/search/repositories
 package models
 
 import (

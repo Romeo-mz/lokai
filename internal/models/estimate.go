@@ -4,8 +4,9 @@
 // human-friendly task durations based on hardware specs.
 //
 // Sources:
-//   GPU benchmarks  — https://github.com/XiongjieDai/GPU-Benchmarks-on-LLM-Inference
-//   Ollama perf FAQ — https://github.com/ollama/ollama/blob/main/docs/faq.md
+//
+//	GPU benchmarks  — https://github.com/XiongjieDai/GPU-Benchmarks-on-LLM-Inference
+//	Ollama perf FAQ — https://github.com/ollama/ollama/blob/main/docs/faq.md
 package models
 
 import (
@@ -17,11 +18,11 @@ import (
 
 // PerformanceEstimate holds estimated generation speed and timing.
 type PerformanceEstimate struct {
-	TokensPerSecond float64 `json:"tokens_per_second"`
-	TimeToFirstToken string `json:"time_to_first_token"` // e.g. "~0.5s"
-	GenerationTime   string `json:"generation_time"`     // e.g. "~12s for 500 tokens"
-	QualityRating    string `json:"quality_rating"`      // "Low", "Medium", "High", "Excellent"
-	Notes            string `json:"notes,omitempty"`
+	TokensPerSecond  float64 `json:"tokens_per_second"`
+	TimeToFirstToken string  `json:"time_to_first_token"` // e.g. "~0.5s"
+	GenerationTime   string  `json:"generation_time"`     // e.g. "~12s for 500 tokens"
+	QualityRating    string  `json:"quality_rating"`      // "Low", "Medium", "High", "Excellent"
+	Notes            string  `json:"notes,omitempty"`
 }
 
 // EstimatePerformance predicts generation speed for a model on given hardware.

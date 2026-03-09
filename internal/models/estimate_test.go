@@ -62,11 +62,11 @@ func TestEstimatePerformance_AppleSilicon(t *testing.T) {
 
 func TestEstimatePerformance_CPUOnly(t *testing.T) {
 	specs := &hardware.HardwareSpecs{
-		HasGPU:       false,
-		CPUCores:     8,
-		HasAVX2:      true,
-		RAMTotalGB:   32,
-		RAMAvailableGB: 20,
+		HasGPU:          false,
+		CPUCores:        8,
+		HasAVX2:         true,
+		RAMTotalGB:      32,
+		RAMAvailableGB:  20,
 		AvailableVRAMGB: 14,
 	}
 

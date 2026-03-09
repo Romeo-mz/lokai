@@ -30,14 +30,14 @@ const (
 
 // GPUInfo holds detected information about a single GPU.
 type GPUInfo struct {
-	Vendor          GPUVendor `json:"vendor"`
-	Name            string    `json:"name"`
-	VRAMTotalGB     float64   `json:"vram_total_gb"`
-	VRAMFreeGB      float64   `json:"vram_free_gb"`
-	CUDACapability  string    `json:"cuda_capability,omitempty"`
-	PCIAddress      string    `json:"pci_address,omitempty"`
-	DriverVersion   string    `json:"driver_version,omitempty"`
-	ComputeCores    int       `json:"compute_cores,omitempty"`
+	Vendor         GPUVendor `json:"vendor"`
+	Name           string    `json:"name"`
+	VRAMTotalGB    float64   `json:"vram_total_gb"`
+	VRAMFreeGB     float64   `json:"vram_free_gb"`
+	CUDACapability string    `json:"cuda_capability,omitempty"`
+	PCIAddress     string    `json:"pci_address,omitempty"`
+	DriverVersion  string    `json:"driver_version,omitempty"`
+	ComputeCores   int       `json:"compute_cores,omitempty"`
 }
 
 // HardwareSpecs holds all detected system hardware information.
@@ -63,12 +63,12 @@ type HardwareSpecs struct {
 	RAMAvailableGB float64 `json:"ram_available_gb"`
 
 	// GPU
-	GPUs    []GPUInfo `json:"gpus"`
-	HasGPU  bool      `json:"has_gpu"`
-	GPUCount int      `json:"gpu_count"`
+	GPUs     []GPUInfo `json:"gpus"`
+	HasGPU   bool      `json:"has_gpu"`
+	GPUCount int       `json:"gpu_count"`
 
 	// Apple Silicon
-	IsAppleSilicon bool    `json:"is_apple_silicon"`
+	IsAppleSilicon  bool    `json:"is_apple_silicon"`
 	UnifiedMemoryGB float64 `json:"unified_memory_gb,omitempty"`
 
 	// Computed budget — how much VRAM/RAM is available for model loading

@@ -4,9 +4,10 @@
 // VRAM estimates, and use-case mappings.
 //
 // Sources:
-//   Ollama Library — https://ollama.com/search
-//   Model cards    — https://huggingface.co
-//   Benchmarks     — https://huggingface.co/spaces/open-llm-leaderboard/open_llm_leaderboard
+//
+//	Ollama Library — https://ollama.com/search
+//	Model cards    — https://huggingface.co
+//	Benchmarks     — https://huggingface.co/spaces/open-llm-leaderboard/open_llm_leaderboard
 package models
 
 import "github.com/romeo-mz/lokai/internal/hardware"
@@ -37,25 +38,25 @@ const (
 
 // ModelEntry represents a model in the catalog.
 type ModelEntry struct {
-	Name            string    `json:"name"`             // Human-readable name
-	OllamaTag       string    `json:"ollama_tag"`       // e.g. "llama3.1:8b"
-	Family          string    `json:"family"`           // e.g. "llama", "gemma", "qwen"
-	ParameterSize   string    `json:"parameter_size"`   // e.g. "8B", "70B"
-	ParameterCount  float64   `json:"parameter_count"`  // e.g. 8.0, 70.0 (in billions)
-	QuantLevel      string    `json:"quant_level"`      // e.g. "Q4_K_M", "Q4_0"
-	DiskSizeGB      float64   `json:"disk_size_gb"`     // Approximate download size
-	EstimatedVRAMGB float64   `json:"estimated_vram_gb"`// VRAM needed at runtime
-	UseCases        []UseCase `json:"use_cases"`        // Supported use cases
-	Capabilities    []string  `json:"capabilities"`     // "tools", "vision", "thinking", etc.
-	Quality         int       `json:"quality"`          // Quality score 1-100 (higher = better)
-	Description     string    `json:"description"`      // Short description
+	Name            string    `json:"name"`              // Human-readable name
+	OllamaTag       string    `json:"ollama_tag"`        // e.g. "llama3.1:8b"
+	Family          string    `json:"family"`            // e.g. "llama", "gemma", "qwen"
+	ParameterSize   string    `json:"parameter_size"`    // e.g. "8B", "70B"
+	ParameterCount  float64   `json:"parameter_count"`   // e.g. 8.0, 70.0 (in billions)
+	QuantLevel      string    `json:"quant_level"`       // e.g. "Q4_K_M", "Q4_0"
+	DiskSizeGB      float64   `json:"disk_size_gb"`      // Approximate download size
+	EstimatedVRAMGB float64   `json:"estimated_vram_gb"` // VRAM needed at runtime
+	UseCases        []UseCase `json:"use_cases"`         // Supported use cases
+	Capabilities    []string  `json:"capabilities"`      // "tools", "vision", "thinking", etc.
+	Quality         int       `json:"quality"`           // Quality score 1-100 (higher = better)
+	Description     string    `json:"description"`       // Short description
 	// IsExternal marks models that cannot be installed via "ollama pull"
 	// (e.g. diffusion models that need ComfyUI, whisper.cpp, etc.).
-	IsExternal  bool   `json:"is_external,omitempty"`
+	IsExternal bool `json:"is_external,omitempty"`
 	// ExternalURL is the HuggingFace or project page for non-Ollama models.
 	ExternalURL string `json:"external_url,omitempty"`
 	// Pipeline is the required inference software (e.g. "comfyui", "whisper.cpp").
-	Pipeline    string `json:"pipeline,omitempty"`
+	Pipeline string `json:"pipeline,omitempty"`
 }
 
 // IsPullable returns true when the model can be installed via "ollama pull".

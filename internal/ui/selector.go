@@ -19,14 +19,14 @@ type SelectorResult struct {
 }
 
 type selectorModel struct {
-	recs     []models.Recommendation
-	specs    *hardware.HardwareSpecs
-	useCase  hardware.UseCase
-	cursor   int
-	chosen   bool // model chosen, now on install confirm
-	install  bool
-	done     bool
-	result   SelectorResult
+	recs    []models.Recommendation
+	specs   *hardware.HardwareSpecs
+	useCase hardware.UseCase
+	cursor  int
+	chosen  bool // model chosen, now on install confirm
+	install bool
+	done    bool
+	result  SelectorResult
 }
 
 func newSelectorModel(recs []models.Recommendation, specs *hardware.HardwareSpecs, useCase hardware.UseCase) selectorModel {

@@ -257,7 +257,10 @@ func TestDeleteAllModels_ProgressCallback(t *testing.T) {
 	})
 	c := startFakeOllama(t, mux)
 
-	type progressCall struct{ name string; current, total int }
+	type progressCall struct {
+		name           string
+		current, total int
+	}
 	var calls []progressCall
 	_, err := c.DeleteAllModels(context.Background(), func(name string, current, total int) {
 		calls = append(calls, progressCall{name, current, total})

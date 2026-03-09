@@ -1,9 +1,9 @@
 package ollama
 
 import (
+	"os"
 	"os/exec"
 	"runtime"
-	"os"
 )
 
 // InstallStatus represents the current state of the Ollama installation.
@@ -67,7 +67,7 @@ Or run as a systemd service:
   sudo systemctl start ollama`
 
 	case "windows":
-		return 	`Ollama is not installed. Install it with:
+		return `Ollama is not installed. Install it with:
 
   winget install Ollama.Ollama
 
