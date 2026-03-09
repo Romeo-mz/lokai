@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
@@ -31,7 +30,7 @@ func startFakeOllama(t *testing.T, mux *http.ServeMux) *Client {
 // ─── NewClient ───────────────────────────────────────────────────────────────
 
 func TestNewClient_Default(t *testing.T) {
-	os.Unsetenv("OLLAMA_HOST")
+	t.Setenv("OLLAMA_HOST", "")
 	c, err := NewClient()
 	require.NoError(t, err)
 	assert.NotNil(t, c.inner)
@@ -158,7 +157,7 @@ func TestPullModel_Success(t *testing.T) {
 		}
 		for _, l := range lines {
 			b, _ := json.Marshal(l)
-			w.Write(append(b, '\n'))
+			_, _ = w.Write(append(b, '\n'))
 		}
 	})
 	c := startFakeOllama(t, mux)
@@ -176,7 +175,7 @@ func TestPullModel_NoProgressCallback(t *testing.T) {
 	mux.HandleFunc("/api/pull", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/x-ndjson")
 		b, _ := json.Marshal(map[string]string{"status": "success"})
-		w.Write(append(b, '\n'))
+		_, _ = w.Write(append(b, '\n'))
 	})
 	c := startFakeOllama(t, mux)
 
@@ -286,7 +285,7 @@ func TestGenerate_StreamsTokens(t *testing.T) {
 			{"", true},
 		} {
 			b, _ := json.Marshal(chunk)
-			w.Write(append(b, '\n'))
+			_, _ = w.Write(append(b, '\n'))
 		}
 	})
 	c := startFakeOllama(t, mux)
@@ -325,6 +324,6 @@ func TestGetInstallInstructions_AllPlatforms(t *testing.T) {
 func newOllamaAPIHandler(mux *http.ServeMux, pattern string, body []byte) {
 	mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(body)
+		_, _ = w.Write(body)
 	})
 }
