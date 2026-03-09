@@ -3,6 +3,7 @@ package ollama
 import (
 	"os/exec"
 	"runtime"
+	"os"
 )
 
 // InstallStatus represents the current state of the Ollama installation.
@@ -19,6 +20,14 @@ func CheckInstallation() InstallStatus {
 
 	// Check if ollama binary is in PATH.
 	path, err := exec.LookPath("ollama")
+	if err != nil {
+		// Check if running in Docker container via environment variable
+		if os.Getenv("OLLAMA_HOST") != "" {
+			status.Installed = true
+			status.BinaryPath = "ollama (container)"
+			return status
+		}
+	}
 	if err != nil {
 		status.ErrorMessage = "Ollama is not installed"
 		return status

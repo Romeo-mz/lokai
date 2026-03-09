@@ -6,13 +6,16 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+      # Mount host CA certificates to fix TLS verification issues
+      - /etc/ssl/certs:/etc/ssl/certs:ro
+      - /etc/ca-certificates:/etc/ca-certificates:ro
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
 
   # lokai CLI
   lokai:
