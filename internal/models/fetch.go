@@ -63,7 +63,7 @@ func fetchOllamaSearchPage(ctx context.Context, client *http.Client) ([]Discover
 	if err != nil {
 		return nil, fmt.Errorf("ollama search: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("ollama search: HTTP %d", resp.StatusCode)
@@ -142,7 +142,7 @@ func fetchRegistryTags(ctx context.Context, client *http.Client, model string) (
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("registry HTTP %d for %s", resp.StatusCode, model)
@@ -174,7 +174,7 @@ func FetchGitHubModels(ctx context.Context) ([]DiscoveredModel, error) {
 	if err != nil {
 		return nil, fmt.Errorf("github search: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("github search: HTTP %d", resp.StatusCode)
