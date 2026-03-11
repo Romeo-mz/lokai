@@ -171,7 +171,12 @@ func inferModelEntry(name, tag, description string) *ModelEntry {
 		return nil
 	}
 
-	vram := estimateVRAMFromParams(paramCount)
+	quantLevel := inferQuantLevel(tag)
+	multiplier := quantVRAMMultiplier[quantLevel]
+	if multiplier == 0 {
+		multiplier = 1.0
+	}
+	vram := estimateVRAMFromParams(paramCount) * multiplier
 	quality := inferQuality(paramCount)
 
 	displayName := titleCase(name) + " " + tag
@@ -182,7 +187,7 @@ func inferModelEntry(name, tag, description string) *ModelEntry {
 		Family:          name,
 		ParameterSize:   formatParamSize(paramCount),
 		ParameterCount:  paramCount,
-		QuantLevel:      "Q4_K_M",
+		QuantLevel:      quantLevel,
 		DiskSizeGB:      vram * 0.55,
 		EstimatedVRAMGB: vram,
 		UseCases:        useCases,
@@ -243,6 +248,38 @@ func containsAny(s string, terms ...string) bool {
 		}
 	}
 	return false
+}
+
+// quantVRAMMultiplier maps quantisation level to a VRAM scaling factor
+// relative to Q4_K_M (the reference at 1.0).
+var quantVRAMMultiplier = map[string]float64{
+	"F32":    4.0,
+	"F16":    2.0,
+	"Q8_0":   1.6,
+	"Q6_K":   1.3,
+	"Q5_K_M": 1.1,
+	"Q5_0":   1.1,
+	"Q4_K_M": 1.0,
+	"Q4_0":   0.95,
+	"Q3_K_M": 0.8,
+	"Q2_K":   0.65,
+}
+
+// inferQuantLevel extracts the quantisation level from an Ollama tag.
+// e.g. "llama3:8b-q4_k_m" → "Q4_K_M", "llama3:8b-fp16" → "F16".
+// Returns "Q4_K_M" if the level cannot be determined.
+func inferQuantLevel(tag string) string {
+	upper := strings.ToUpper(tag)
+	for level := range quantVRAMMultiplier {
+		if strings.Contains(upper, level) {
+			return level
+		}
+	}
+	// fp16 is spelled various ways.
+	if strings.Contains(upper, "FP16") || strings.Contains(upper, "F16") {
+		return "F16"
+	}
+	return "Q4_K_M"
 }
 
 // estimateVRAMFromParams gives a rough VRAM estimate for a Q4-quantised model.

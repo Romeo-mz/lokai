@@ -13,7 +13,8 @@ import (
 // DisplayResults shows the recommendation table, then runs the interactive
 // model selector with live performance estimates. Returns the chosen model tag,
 // whether the user wants to install, and any error.
-func DisplayResults(recs []models.Recommendation, specs *hardware.HardwareSpecs, useCase hardware.UseCase) (string, bool, error) {
+// benchData, when non-nil, overrides estimated tok/s with measured values in the table and selector.
+func DisplayResults(recs []models.Recommendation, specs *hardware.HardwareSpecs, useCase hardware.UseCase, benchData map[string]float64) (string, bool, error) {
 	if len(recs) == 0 {
 		fmt.Println(WarningBoxStyle.Render(
 			WarningStyle.Render("⚠ No compatible models found for your hardware and use case.\n") +
@@ -36,6 +37,13 @@ func DisplayResults(recs []models.Recommendation, specs *hardware.HardwareSpecs,
 		}
 
 		est := models.EstimatePerformance(rec.Model, specs)
+		// If we have an actual benchmark measurement, use it in the table.
+		speedLabel := fmt.Sprintf("~%.0f tok/s", est.TokensPerSecond)
+		if benchData != nil {
+			if tps, ok := benchData[rec.Model.OllamaTag]; ok && tps > 0 {
+				speedLabel = fmt.Sprintf("✓%.0f tok/s", tps)
+			}
+		}
 
 		modelDisplay := rec.Model.OllamaTag
 		installNote := rec.Reason
@@ -48,7 +56,7 @@ func DisplayResults(recs []models.Recommendation, specs *hardware.HardwareSpecs,
 			modelDisplay,
 			rec.Model.ParameterSize,
 			vramStr,
-			fmt.Sprintf("~%.0f tok/s", est.TokensPerSecond),
+			speedLabel,
 			est.QualityRating,
 			installNote,
 		})
@@ -77,7 +85,7 @@ func DisplayResults(recs []models.Recommendation, specs *hardware.HardwareSpecs,
 	fmt.Println()
 
 	// Interactive selector with live performance panel.
-	result, err := RunModelSelector(recs, specs, useCase)
+	result, err := RunModelSelector(recs, specs, useCase, benchData)
 	if err != nil {
 		return "", false, err
 	}

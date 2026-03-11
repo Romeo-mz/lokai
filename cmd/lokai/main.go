@@ -155,6 +155,9 @@ func main() {
 	if reg.DynamicCount() > 0 {
 		catalog = reg.FullCatalog()
 	}
+	// Load cached benchmark results to improve speed-priority scoring and display.
+	benchData := ui.LoadBenchmarkCache()
+
 	recs := models.Recommend(specs, models.RecommendOptions{
 		UseCase:       prefs.UseCase,
 		SubTask:       prefs.SubTask,
@@ -162,10 +165,11 @@ func main() {
 		IncludeRemote: prefs.IncludeRemote,
 		MaxResults:    5,
 		Catalog:       catalog,
+		BenchmarkData: benchData,
 	})
 
 	// Display results and get user selection.
-	selectedModel, wantInstall, err := ui.DisplayResults(recs, specs, prefs.UseCase)
+	selectedModel, wantInstall, err := ui.DisplayResults(recs, specs, prefs.UseCase, benchData)
 	if err != nil {
 		fmt.Println(ui.ErrorStyle.Render("✗ " + err.Error()))
 		os.Exit(1)
@@ -258,6 +262,7 @@ func runJSONMode(ctx context.Context, client *ollama.Client, useCase hardware.Us
 
 	var rJSONs []jsonRec
 	for i, r := range recs {
+		perf := models.EstimatePerformance(r.Model, specs)
 		rJSONs = append(rJSONs, jsonRec{
 			Rank:        i + 1,
 			OllamaTag:   r.Model.OllamaTag,
@@ -265,154 +270,14 @@ func runJSONMode(ctx context.Context, client *ollama.Client, useCase hardware.Us
 			Size:        r.Model.ParameterSize,
 			VRAMNeeded:  r.Model.EstimatedVRAMGB,
 			FitsInVRAM:  r.FitsInVRAM,
-			Quality:     models.QualityRating(r.Model.Quality),
+			Quality:     perf.QualityRating,
 			Score:       r.Score,
 			Reason:      r.Reason,
-			Performance: models.EstimatePerformance(r.Model, specs),
+			Performance: perf,
 		})
 	}
 
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	_ = enc.Encode(jsonOutput{Hardware: specs, Recommendations: rJSONs})
-}
-
-
-	// Handle --clear-cache: wipe all local cached data.
-	if wantClearCache {
-		store, err := cache.New()
-		if err == nil {
-			_ = store.Clear()
-			fmt.Println("✓ Cache cleared (" + store.Dir() + ")")
-		}
-		return
-	}
-
-	// Print banner.
-	fmt.Println(ui.Banner())
-
-	// Check Ollama installation.
-	status := ollama.CheckInstallation()
-	if !status.Installed {
-		fmt.Println(ui.ErrorStyle.Render("✗ " + status.ErrorMessage))
-		fmt.Println()
-		fmt.Println(ollama.GetInstallInstructions())
-		os.Exit(1)
-	}
-
-	// Create Ollama client and check health.
-	client, err := ollama.NewClient()
-	if err != nil {
-		fmt.Println(ui.ErrorStyle.Render("✗ " + err.Error()))
-		os.Exit(1)
-	}
-
-	if err := client.CheckHealth(ctx); err != nil {
-		fmt.Println(ui.ErrorStyle.Render("✗ Ollama server is not running."))
-		fmt.Println(ui.MutedStyle.Render("  Start it with: ollama serve"))
-		os.Exit(1)
-	}
-
-	// Handle --clean: remove all installed models.
-	if wantClean {
-		if err := ui.RunCleanup(ctx, client); err != nil {
-			fmt.Println(ui.ErrorStyle.Render("✗ " + err.Error()))
-			os.Exit(1)
-		}
-		return
-	}
-
-	// Handle --benchmark: benchmark all installed models.
-	if wantBenchmark {
-		if err := ui.RunBenchmark(ctx, client); err != nil {
-			fmt.Println(ui.ErrorStyle.Render("✗ " + err.Error()))
-			os.Exit(1)
-		}
-		return
-	}
-
-	// Scan hardware.
-	specs, err := ui.ScanAndDisplay(ctx)
-	if err != nil {
-		fmt.Println(ui.ErrorStyle.Render("✗ " + err.Error()))
-		os.Exit(1)
-	}
-
-	// Run questionnaire, defaulting IncludeRemote when no models are installed.
-	installedModels, _ := client.ListModels(ctx)
-	prefs, err := ui.RunQuestionnaire(specs, len(installedModels) > 0)
-	if err != nil {
-		fmt.Println(ui.ErrorStyle.Render("✗ " + err.Error()))
-		os.Exit(1)
-	}
-
-	// Refresh model registry from Ollama (best-effort, 5s timeout).
-	reg := models.NewRegistry()
-	refreshCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	if err := reg.Refresh(refreshCtx); err == nil && reg.DynamicCount() > 0 {
-		fmt.Println(ui.MutedStyle.Render(fmt.Sprintf("  ✓ Discovered %d additional models from Ollama", reg.DynamicCount())))
-		fmt.Println()
-	}
-
-	// Get recommendations (uses dynamic catalog if available, else static).
-	var catalog []models.ModelEntry
-	if reg.DynamicCount() > 0 {
-		catalog = reg.FullCatalog()
-	}
-	recs := models.Recommend(specs, models.RecommendOptions{
-		UseCase:       prefs.UseCase,
-		SubTask:       prefs.SubTask,
-		Priority:      prefs.Priority,
-		IncludeRemote: prefs.IncludeRemote,
-		MaxResults:    5,
-		Catalog:       catalog,
-	})
-
-	// Display results and get user selection.
-	selectedModel, wantInstall, err := ui.DisplayResults(recs, specs, prefs.UseCase)
-	if err != nil {
-		fmt.Println(ui.ErrorStyle.Render("✗ " + err.Error()))
-		os.Exit(1)
-	}
-
-	if selectedModel == "" {
-		// No model selected — show pipeline context notes as guidance, then exit.
-		if prefs.UseCase == hardware.UseCaseVideo {
-			ui.ShowVideoPipelineNote()
-		}
-		if prefs.UseCase == hardware.UseCaseImage {
-			ui.ShowImagePipelineNote()
-		}
-		if prefs.UseCase == hardware.UseCaseAudio {
-			ui.ShowAudioPipelineNote()
-		}
-		fmt.Println(ui.MutedStyle.Render("No model selected. Goodbye!"))
-		return
-	}
-
-	// Look up the full catalog entry to decide the correct install path.
-	entry := models.GetModelByTag(selectedModel)
-	if entry != nil && !entry.IsPullable() {
-		// External model (diffusion / non-Ollama) — cannot use "ollama pull".
-		// Show dedicated pipeline setup instructions instead.
-		ui.ShowExternalModelInstructions(*entry)
-	} else {
-		// Standard Ollama model — pull and run via ollama.
-		if wantInstall {
-			if err := ui.PullWithProgress(ctx, client, selectedModel); err != nil {
-				os.Exit(1)
-			}
-		} else {
-			ui.ShowInstallInstructions(selectedModel)
-		}
-		if prefs.UseCase == hardware.UseCaseAudio {
-			ui.ShowAudioPipelineNote()
-		}
-	}
-
-	// Show heretic suggestion for NSFW/uncensored use case.
-	if prefs.UseCase == hardware.UseCaseNSFW {
-		ui.ShowHereticSuggestion()
-	}
 }

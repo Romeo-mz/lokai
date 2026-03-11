@@ -106,6 +106,29 @@ func RunBenchmarkCached(ctx context.Context, client *ollama.Client) ([]benchmark
 	return results, nil
 }
 
+// LoadBenchmarkCache reads the on-disk benchmark cache without running any benchmarks.
+// Returns a map of model tag → measured tokens/sec for all successfully cached models.
+func LoadBenchmarkCache() map[string]float64 {
+	store, err := cache.New()
+	if err != nil {
+		return nil
+	}
+	var cached cachedBenchmarks
+	if !store.Get(benchCacheKey, &cached) {
+		return nil
+	}
+	result := make(map[string]float64, len(cached.Results))
+	for _, r := range cached.Results {
+		if r.Success && r.EvalRate > 0 {
+			result[r.ModelTag] = r.EvalRate
+		}
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
+}
+
 func runBenchmarkInner(ctx context.Context, client *ollama.Client, force bool) error {
 	fmt.Println(SubtitleStyle.Render("⚡ Benchmarking installed models..."))
 	fmt.Println()

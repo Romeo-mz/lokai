@@ -19,21 +19,23 @@ type SelectorResult struct {
 }
 
 type selectorModel struct {
-	recs    []models.Recommendation
-	specs   *hardware.HardwareSpecs
-	useCase hardware.UseCase
-	cursor  int
-	chosen  bool // model chosen, now on install confirm
-	install bool
-	done    bool
-	result  SelectorResult
+	recs      []models.Recommendation
+	specs     *hardware.HardwareSpecs
+	useCase   hardware.UseCase
+	benchData map[string]float64
+	cursor    int
+	chosen    bool // model chosen, now on install confirm
+	install   bool
+	done      bool
+	result    SelectorResult
 }
 
-func newSelectorModel(recs []models.Recommendation, specs *hardware.HardwareSpecs, useCase hardware.UseCase) selectorModel {
+func newSelectorModel(recs []models.Recommendation, specs *hardware.HardwareSpecs, useCase hardware.UseCase, benchData map[string]float64) selectorModel {
 	return selectorModel{
-		recs:    recs,
-		specs:   specs,
-		useCase: useCase,
+		recs:      recs,
+		specs:     specs,
+		useCase:   useCase,
+		benchData: benchData,
 	}
 }
 
@@ -154,6 +156,20 @@ func (m selectorModel) renderPerformancePanel() string {
 	rec := m.recs[m.cursor]
 	est := models.EstimatePerformance(rec.Model, m.specs)
 
+	// Override with actual measured speed if available.
+	isMeasured := false
+	if m.benchData != nil {
+		if tps, ok := m.benchData[rec.Model.OllamaTag]; ok && tps > 0 {
+			est.TokensPerSecond = tps
+			isMeasured = true
+		}
+	}
+
+	speedPrefix := "~"
+	if isMeasured {
+		speedPrefix = "✓"
+	}
+
 	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(ColorSecondary)
 	labelStyle := lipgloss.NewStyle().Foreground(ColorSubtext).Width(22)
 	valueStyle := lipgloss.NewStyle().Foreground(ColorText).Bold(true)
@@ -164,7 +180,7 @@ func (m selectorModel) renderPerformancePanel() string {
 	b.WriteString(headerStyle.Render("  📊 Performance Estimate — " + rec.Model.OllamaTag))
 	b.WriteString("\n\n")
 
-	b.WriteString("  " + labelStyle.Render("Speed") + valueStyle.Render(fmt.Sprintf("~%.1f tokens/sec", est.TokensPerSecond)) + "\n")
+	b.WriteString("  " + labelStyle.Render("Speed") + valueStyle.Render(fmt.Sprintf("%s %.1f tokens/sec", speedPrefix, est.TokensPerSecond)) + "\n")
 	b.WriteString("  " + labelStyle.Render("First response") + valueStyle.Render(est.TimeToFirstToken) + "\n")
 	b.WriteString("  " + labelStyle.Render("Quality") + valueStyle.Render(est.QualityRating) + "\n")
 
@@ -213,8 +229,9 @@ func (m selectorModel) renderInstallConfirm() string {
 }
 
 // RunModelSelector runs the interactive model selector with live performance estimates.
-func RunModelSelector(recs []models.Recommendation, specs *hardware.HardwareSpecs, useCase hardware.UseCase) (SelectorResult, error) {
-	m := newSelectorModel(recs, specs, useCase)
+// benchData, when non-nil, shows measured tok/s instead of estimates for benchmarked models.
+func RunModelSelector(recs []models.Recommendation, specs *hardware.HardwareSpecs, useCase hardware.UseCase, benchData map[string]float64) (SelectorResult, error) {
+	m := newSelectorModel(recs, specs, useCase, benchData)
 	p := tea.NewProgram(m)
 	finalModel, err := p.Run()
 	if err != nil {

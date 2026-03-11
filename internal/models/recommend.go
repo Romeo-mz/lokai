@@ -68,9 +68,10 @@ type RecommendOptions struct {
 	UseCase       UseCase
 	SubTask       SubTask
 	Priority      Priority
-	IncludeRemote bool         // Include models not yet downloaded
-	MaxResults    int          // Max recommendations to return (default: 5)
-	Catalog       []ModelEntry // Optional dynamic catalog (from Registry); nil = static
+	IncludeRemote bool               // Include models not yet downloaded
+	MaxResults    int                // Max recommendations to return (default: 5)
+	Catalog       []ModelEntry       // Optional dynamic catalog (from Registry); nil = static
+	BenchmarkData map[string]float64 // model tag → actual measured tok/s; improves speed scoring when available
 }
 
 // Recommend returns the best models for the given hardware and preferences.
@@ -110,7 +111,7 @@ func Recommend(specs *hardware.HardwareSpecs, opts RecommendOptions) []Recommend
 			continue
 		}
 
-		score := computeScore(model, specs, opts.Priority, opts.SubTask, fits)
+		score := computeScore(model, specs, opts.Priority, opts.SubTask, fits, opts.BenchmarkData)
 		usage := 0.0
 		if availableVRAM > 0 {
 			usage = (model.EstimatedVRAMGB / availableVRAM) * 100
@@ -141,7 +142,8 @@ func Recommend(specs *hardware.HardwareSpecs, opts RecommendOptions) []Recommend
 }
 
 // computeScore assigns a composite score based on model quality, fit, and priority.
-func computeScore(model ModelEntry, specs *hardware.HardwareSpecs, priority Priority, subTask SubTask, fits bool) float64 {
+// benchData, when non-nil, supplies actual measured tok/s and improves speed-priority scoring.
+func computeScore(model ModelEntry, specs *hardware.HardwareSpecs, priority Priority, subTask SubTask, fits bool, benchData map[string]float64) float64 {
 	score := float64(model.Quality) // Base: quality score (0-100)
 
 	if !fits {
@@ -155,14 +157,24 @@ func computeScore(model ModelEntry, specs *hardware.HardwareSpecs, priority Prio
 		score *= 1.0
 
 	case PrioritySpeed:
-		// Favor smaller models (faster inference).
-		// Bonus for models that use less VRAM (more headroom = faster).
+		// Bonus proportional to how small the model is relative to available VRAM (proxy for speed).
+		estimatedBonus := 0.0
 		if specs.AvailableVRAMGB > 0 {
 			usageRatio := model.EstimatedVRAMGB / specs.AvailableVRAMGB
-			speedBonus := (1.0 - usageRatio) * 30 // Up to 30 points for low usage
-			score += speedBonus
+			estimatedBonus = (1.0 - usageRatio) * 30 // Up to 30 points for low VRAM usage
 		}
-		// Penalty for very large models.
+		// If we have an actual benchmark, replace the VRAM-estimate with the measurement.
+		// Scale: 100 tok/s → 30 pts  (same range as the estimated bonus).
+		if benchData != nil {
+			if actualTPS, ok := benchData[model.OllamaTag]; ok && actualTPS > 0 {
+				score += actualTPS / 3.333
+			} else {
+				score += estimatedBonus
+			}
+		} else {
+			score += estimatedBonus
+		}
+		// Penalty for very large models (slow even on fast hardware).
 		if model.ParameterCount > 30 {
 			score *= 0.7
 		}
@@ -196,7 +208,6 @@ func subTaskBonus(model ModelEntry, subTask SubTask) float64 {
 
 	nameLower := strings.ToLower(model.Name)
 	familyLower := strings.ToLower(model.Family)
-	descLower := strings.ToLower(model.Description)
 	hasCap := func(cap string) bool {
 		for _, c := range model.Capabilities {
 			if c == cap {
@@ -333,7 +344,7 @@ func subTaskBonus(model ModelEntry, subTask SubTask) float64 {
 		if hasCap("thinking") {
 			return 15
 		}
-		if strings.Contains(nameLower, "qwq") || strings.Contains(nameLower, "phi-4") {
+		if strings.Contains(nameLower, "qwq") {
 			return 10
 		}
 
@@ -363,23 +374,23 @@ func subTaskBonus(model ModelEntry, subTask SubTask) float64 {
 
 	// ── Image gen sub-tasks ──
 	case SubTaskPhotorealistic:
-		// FLUX and SD 3.5 are better for photorealism.
-		if strings.Contains(nameLower, "flux") || strings.Contains(nameLower, "sd 3.5") {
+		// FLUX and SD3 produce the most photorealistic images.
+		if familyLower == "flux" || familyLower == "sd3" {
 			return 15
 		}
 
 	case SubTaskArtistic:
-		// SDXL and PixArt are good for artistic styles.
-		if strings.Contains(nameLower, "sdxl") || strings.Contains(nameLower, "pixart") {
+		// SDXL and PixArt are best for artistic styles.
+		if familyLower == "sdxl" || familyLower == "pixart" {
 			return 12
 		}
-		if strings.Contains(nameLower, "flux") {
+		if familyLower == "flux" {
 			return 8
 		}
 
 	case SubTaskFastDrafts:
-		// Prefer smaller/faster image models.
-		if strings.Contains(descLower, "fast") || strings.Contains(nameLower, "schnell") {
+		// "schnell" variants are the fastest image generators.
+		if strings.Contains(model.OllamaTag, "schnell") {
 			return 15
 		}
 		if model.EstimatedVRAMGB <= 8 {
@@ -388,14 +399,14 @@ func subTaskBonus(model ModelEntry, subTask SubTask) float64 {
 
 	// ── Audio sub-tasks ──
 	case SubTaskTranscription:
-		// Prefer Whisper models.
-		if strings.Contains(nameLower, "whisper") {
+		// Prefer models with speech-to-text capability.
+		if hasCap("speech-to-text") {
 			return 15
 		}
 
 	case SubTaskTTS:
-		// Prefer Bark / TTS models.
-		if strings.Contains(nameLower, "bark") {
+		// Prefer models with text-to-speech capability.
+		if hasCap("text-to-speech") {
 			return 15
 		}
 	}

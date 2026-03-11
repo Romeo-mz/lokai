@@ -19,7 +19,8 @@ func TestComputeAvailableVRAM_NvidiaGPU(t *testing.T) {
 	}
 }
 
-func TestComputeAvailableVRAM_MultiGPU_TakesLargest(t *testing.T) {
+func TestComputeAvailableVRAM_MultiGPU_SumsVendor(t *testing.T) {
+	// Two same-vendor GPUs: free VRAM is summed for tensor-parallel inference.
 	s := &HardwareSpecs{
 		HasGPU: true,
 		GPUs: []GPUInfo{
@@ -28,8 +29,8 @@ func TestComputeAvailableVRAM_MultiGPU_TakesLargest(t *testing.T) {
 		},
 	}
 	s.ComputeAvailableVRAM()
-	if s.AvailableVRAMGB != 20.0 {
-		t.Errorf("Expected largest free VRAM (20 GB), got %.1f", s.AvailableVRAMGB)
+	if s.AvailableVRAMGB != 26.0 {
+		t.Errorf("Expected summed free VRAM (26 GB), got %.1f", s.AvailableVRAMGB)
 	}
 }
 

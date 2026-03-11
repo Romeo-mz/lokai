@@ -17,6 +17,7 @@ func TestComputeAvailableVRAM_GPU(t *testing.T) {
 }
 
 func TestComputeAvailableVRAM_MultiGPU(t *testing.T) {
+	// Two same-vendor GPUs: free VRAM should be summed (tensor-parallel support).
 	specs := &HardwareSpecs{
 		HasGPU: true,
 		GPUs: []GPUInfo{
@@ -26,8 +27,8 @@ func TestComputeAvailableVRAM_MultiGPU(t *testing.T) {
 	}
 	specs.ComputeAvailableVRAM()
 
-	if specs.AvailableVRAMGB != 22.0 {
-		t.Errorf("expected largest GPU (22.0 GB), got %.1f GB", specs.AvailableVRAMGB)
+	if specs.AvailableVRAMGB != 29.0 {
+		t.Errorf("expected summed VRAM across same-vendor GPUs (29.0 GB), got %.1f GB", specs.AvailableVRAMGB)
 	}
 }
 
