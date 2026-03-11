@@ -78,19 +78,21 @@ func RunBenchmarkCached(ctx context.Context, client *ollama.Client) ([]benchmark
 
 	// Benchmark only missing models.
 	if len(missing) > 0 {
+		fmt.Println(SubtitleStyle.Render("⚡ Benchmarking installed models..."))
+		fmt.Println()
 		opts := benchmark.Options{Warmup: true, MaxTokens: 128}
-		newResults := benchmark.RunMultiple(ctx, client, missing, opts, func(r benchmark.Result) {
+		for _, tag := range missing {
+			r := benchWithSpinner(ctx, client, tag, opts)
 			status := SuccessStyle.Render("✓")
 			if !r.Success {
 				status = ErrorStyle.Render("✗")
 			}
 			fmt.Printf("   %s %s — %s\n", status, ValueStyle.Render(r.ModelTag), r.FormattedSpeed())
-		})
-		for _, r := range newResults {
 			if r.Success {
 				have[r.ModelTag] = r
 			}
 		}
+		fmt.Println()
 	}
 
 	// Build final list (only models currently installed).
@@ -181,6 +183,36 @@ func LoadOrPromptBenchmark(ctx context.Context, client *ollama.Client, installed
 	return BenchResultsToMap(results)
 }
 
+// spinnerFrames are braille animation frames for the benchmark waiting indicator.
+var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
+// benchWithSpinner runs a single benchmark while displaying an animated spinner
+// with an elapsed timer. The spinner line is cleared before returning so the
+// caller can print the final result cleanly on a fresh line.
+func benchWithSpinner(ctx context.Context, client *ollama.Client, tag string, opts benchmark.Options) benchmark.Result {
+	done := make(chan struct{})
+	start := time.Now()
+	go func() {
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+		for frame := 0; ; frame++ {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				elapsed := time.Since(start).Round(time.Second)
+				sp := MutedStyle.Render(spinnerFrames[frame%len(spinnerFrames)])
+				fmt.Printf("\r   %s %s  %s", sp, ValueStyle.Render(tag), MutedStyle.Render(elapsed.String()))
+			}
+		}
+	}()
+	r := benchmark.Run(ctx, client, tag, opts)
+	close(done)
+	// Clear the spinner line.
+	fmt.Printf("\r%s\r", strings.Repeat(" ", 80))
+	return r
+}
+
 func runBenchmarkInner(ctx context.Context, client *ollama.Client, force bool) error {
 	fmt.Println(SubtitleStyle.Render("⚡ Benchmarking installed models..."))
 	fmt.Println()
@@ -232,26 +264,16 @@ func runBenchmarkInner(ctx context.Context, client *ollama.Client, force bool) e
 		MaxTokens: 128,
 	}
 
-	var rows [][]string
-	results := benchmark.RunMultiple(ctx, client, tags, opts, func(r benchmark.Result) {
+	var results []benchmark.Result
+	for _, tag := range tags {
+		r := benchWithSpinner(ctx, client, tag, opts)
 		status := SuccessStyle.Render("✓")
 		if !r.Success {
 			status = ErrorStyle.Render("✗")
 		}
 		fmt.Printf("   %s %s — %s\n", status, ValueStyle.Render(r.ModelTag), r.FormattedSpeed())
-
-		row := []string{
-			r.ModelTag,
-			r.FormattedSpeed(),
-			r.FormattedTTFT(),
-			fmt.Sprintf("%d", r.TokensGenerated),
-			r.FormattedTotal(),
-		}
-		if !r.Success {
-			row = []string{r.ModelTag, "failed", "—", "—", r.Error}
-		}
-		rows = append(rows, row)
-	})
+		results = append(results, r)
+	}
 
 	// Save to cache.
 	if store != nil {
