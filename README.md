@@ -14,6 +14,7 @@ Scan your hardware → Pick a use case → Get the best local AI model.
 No guesswork. No VRAM spreadsheets. Just run `lokai`.
 
 **76 models • 9 use cases • Every GPU from Raspberry Pi to workstation**
+Includes native **ComfyUI integration** for image & video generation.
 
 </div>
 
@@ -37,6 +38,7 @@ No guesswork. No VRAM spreadsheets. Just run `lokai`.
 3. **Recommends the best model** — ranked by quality, filtered by your VRAM budget
 4. **Estimates performance** — tokens/sec, time-to-first-token, generation time
 5. **Installs it for you** — pulls via Ollama in one click, with progress bar
+6. **Generates images** — when ComfyUI is running, queue a generation directly from lokai
 
 ## Quick Start
 
@@ -53,6 +55,7 @@ go install github.com/romeo-mz/lokai/cmd/lokai@latest
 ### Prerequisites
 
 - [Ollama](https://ollama.com/) installed and running (`ollama serve`)
+- *(Optional)* [ComfyUI](https://github.com/comfyanonymous/ComfyUI) running locally for image/video generation
 
 ### Run
 
@@ -83,6 +86,11 @@ lokai --scan-only        # Just show hardware specs
 lokai --benchmark        # Benchmark all installed models
 lokai --clean            # Remove all installed models
 lokai --version          # Print version
+
+# Image generation via ComfyUI
+lokai --generate "a red fox in snow"
+lokai --generate "a fox" --model flux-schnell --checkpoint flux1-schnell.safetensors
+lokai --generate "portrait" --steps 20 --width 1024 --height 1024 --seed 42
 ```
 
 ### Non-Interactive Mode
@@ -104,6 +112,13 @@ lokai --use-case chat --priority quality
 | `--use-case` | Preset: `chat`, `code`, `vision`, `embedding`, `reasoning`, `image`, `video`, `audio`, `unrestricted` |
 | `--priority` | Preset: `quality`, `speed`, `balanced` |
 | `--version` | Print version |
+| `--generate` | Generate an image via ComfyUI with the given text prompt |
+| `--model` | Model tag hint for `--generate` (e.g. `flux-schnell`) — sets step/CFG defaults |
+| `--checkpoint` | ComfyUI checkpoint filename (e.g. `flux1-schnell.safetensors`) |
+| `--steps` | Sampling steps for `--generate` (0 = auto: 4 for FLUX/turbo, 20 for SD) |
+| `--width` | Output image width in pixels (default 1024) |
+| `--height` | Output image height in pixels (default 1024) |
+| `--seed` | RNG seed for `--generate` (-1 = random) |
 
 ## Supported Hardware
 
@@ -149,23 +164,70 @@ lokai --use-case chat --priority quality
 | 🔴 High-end | 16-24 GB | Codestral 22B, Gemma 3 27B, DeepSeek R1 32B |
 | 🟣 Workstation | 48+ GB | Llama 3.1 70B, Qwen 2.5 72B, DeepSeek R1 70B |
 
+## Image Generation with ComfyUI
+
+lokai has native ComfyUI support for the **Image Gen** and **Video** use cases.
+
+### Interactive flow
+
+Select **🖼 Image Gen** in the TUI. lokai recommends the best diffusion model for your VRAM, shows download and pipeline setup instructions, then — if ComfyUI is already running — offers to queue a generation immediately.
+
+### Direct CLI generation
+
+```bash
+# Minimal — checkpoint is chosen interactively from ComfyUI's loaded models
+lokai --generate "a red fox in snow"
+
+# With a specific checkpoint
+lokai --generate "a red fox in snow" \
+      --checkpoint flux1-schnell.safetensors
+
+# Full control
+lokai --generate "cyberpunk cityscape, neon lights" \
+      --model flux-dev \
+      --checkpoint flux1-dev.safetensors \
+      --steps 30 --width 1024 --height 1024 --seed 1234
+```
+
+Step defaults are applied automatically per model family:
+
+| Family | Steps | CFG |
+|--------|-------|-----|
+| FLUX (schnell/turbo) | 4 | 1.0 |
+| SD 3.5 (turbo) | 4 | 5.0 |
+| SDXL / SD | 20 | 7.0 |
+
+The generated PNG is saved to the current directory as `lokai-<timestamp>-1.png`.
+
+### ComfyUI setup
+
+```bash
+git clone https://github.com/comfyanonymous/ComfyUI
+cd ComfyUI
+pip install -r requirements.txt
+python main.py        # starts on http://localhost:8188
+```
+
+Download a checkpoint (e.g. from HuggingFace) and place it in `ComfyUI/models/checkpoints/`.
+Set `COMFYUI_HOST` to override the default address.
+
 ## How It Works
 
 ```
-┌──────────────┐     ┌──────────────┐     ┌────────────────┐     ┌──────────────┐
-│  Hardware    │───► │  Use Case    │────►│  Recommend     │────►│  Install /   │
-│  Detection   │     │  Selection   │     │  Engine        │     │  Benchmark   │
-│              │     │              │     │                │     │              │
-│  • CPU/RAM   │     │  • Chat      │     │  • Filter by   │     │  ollama pull │
-│  • GPU/VRAM  │     │  • Code      │     │    VRAM budget │     │  + progress  │
-│  • Platform  │     │  • Vision    │     │  • Rank by     │     │  • tok/sec   │
-│  • Features  │     │  • Embedding │     │    quality     │     │  • TTFT      │
-│              │     │  • Reasoning │     │  • Estimate    │     │              │
-│              │     │  • Image Gen │     │    performance │     │              │
-│              │     │  • Video     │     │                │     │              │
-│              │     │  • Audio     │     │                │     │              │
-│              │     │  • Unrestricted      │     │                │     │              │
-└──────────────┘     └──────────────┘     └────────────────┘     └──────────────┘
+┌──────────────┐     ┌──────────────┐     ┌────────────────┐     ┌──────────────────────────────┐
+│  Hardware    │───► │  Use Case    │────►│  Recommend     │────►│  Install / Benchmark /       │
+│  Detection   │     │  Selection   │     │  Engine        │     │  Generate                    │
+│              │     │              │     │                │     │                              │
+│  • CPU/RAM   │     │  • Chat      │     │  • Filter by   │     │  ollama pull + progress      │
+│  • GPU/VRAM  │     │  • Code      │     │    VRAM budget │     │  • tok/sec benchmark         │
+│  • Platform  │     │  • Vision    │     │  • Rank by     │     │  • ComfyUI image generation  │
+│  • Features  │     │  • Embedding │     │    quality     │     │    (queue → poll → save PNG) │
+│              │     │  • Reasoning │     │  • Estimate    │     │                              │
+│              │     │  • Image Gen │     │    performance │     │                              │
+│              │     │  • Video     │     │                │     │                              │
+│              │     │  • Audio     │     │                │     │                              │
+│              │     │  • Unrestricted      │     │                │     │                              │
+└──────────────┘     └──────────────┘     └────────────────┘     └──────────────────────────────┘
 ```
 
 ## Benchmarking
@@ -224,6 +286,10 @@ make docker-run  # Run with Docker
 cmd/lokai/              → CLI entry point & flags
 internal/
   benchmark/            → Model benchmarking engine
+  comfyui/              → ComfyUI HTTP client & workflow builder
+    ├── client.go       → REST client (health, checkpoints, queue, poll, download)
+    ├── workflow.go     → Node-graph JSON builder for txt2img
+    └── install.go      → Connectivity check & setup instructions
   hardware/             → Hardware detection
     ├── detect.go       → Orchestrator (concurrent detection)
     ├── cpu.go          → CPU info (model, cores, AVX)
@@ -233,11 +299,13 @@ internal/
     ├── gpu_amd_linux.go→ sysfs VRAM detection
     └── gpu_apple.go    → Apple Silicon unified memory
   models/
-    ├── database.go     → 77-model catalog
+    ├── database.go     → 76-model catalog
     ├── recommend.go    → Recommendation engine
     └── estimate.go     → Performance estimation
   ollama/               → Ollama client wrapper
   ui/                   → Terminal UI (charmbracelet)
+    ├── generate.go     → ComfyUI generation flow & OfferGenerate
+    └── notes.go        → Pipeline setup instructions
 ```
 
 ## Tech Stack
@@ -246,8 +314,7 @@ internal/
 |-----------|---------|
 | Language | [Go](https://go.dev) |
 | Hardware | [ghw](https://github.com/jaypipes/ghw), [gopsutil](https://github.com/shirou/gopsutil), [go-nvml](https://github.com/NVIDIA/go-nvml) |
-| LLM Runtime | [Ollama](https://ollama.com/) (native Go API) |
-| TUI | [Charmbracelet](https://charm.sh/) (lipgloss, huh) |
+| LLM Runtime | [Ollama](https://ollama.com/) (native Go API) || Image Generation | [ComfyUI](https://github.com/comfyanonymous/ComfyUI) (REST API) || TUI | [Charmbracelet](https://charm.sh/) (lipgloss, huh) |
 | Build | [GoReleaser](https://goreleaser.com/), [Docker](https://www.docker.com/) |
 | CI/CD | [GitHub Actions](https://github.com/features/actions) |
 

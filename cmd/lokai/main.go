@@ -27,6 +27,15 @@ func main() {
 	jsonOutput := flag.Bool("json", false, "Output recommendations as JSON (non-interactive)")
 	useCaseFlag := flag.String("use-case", "", "Use case for non-interactive mode: chat|code|vision|embedding|reasoning|image|video|audio|unrestricted")
 	priorityFlag := flag.String("priority", "balanced", "Priority for non-interactive mode: speed|balanced|quality")
+
+	// ── ComfyUI image generation flags ───────────────────────────────
+	generatePrompt := flag.String("generate", "", "Generate an image via ComfyUI: --generate \"a red fox in snow\"")
+	generateModel := flag.String("model", "", "Model tag for --generate (e.g. flux-schnell)")
+	generateCheckpoint := flag.String("checkpoint", "", "ComfyUI checkpoint filename for --generate")
+	generateSteps := flag.Int("steps", 0, "Sampling steps for --generate (0 = auto)")
+	generateWidth := flag.Int("width", 1024, "Output image width for --generate")
+	generateHeight := flag.Int("height", 1024, "Output image height for --generate")
+	generateSeed := flag.Int64("seed", -1, "Random seed for --generate (-1 = random)")
 	flag.Parse()
 
 	// Legacy positional-word commands kept for backward compat.
@@ -76,6 +85,27 @@ func main() {
 	// Print banner (suppress in JSON mode for clean piping).
 	if !*jsonOutput {
 		fmt.Println(ui.Banner())
+	}
+
+	// Handle --generate: run image generation via ComfyUI (no Ollama needed).
+	if *generatePrompt != "" {
+		var entry *models.ModelEntry
+		if *generateModel != "" {
+			entry = models.GetModelByTag(*generateModel)
+		}
+		genCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+		defer cancel()
+		if err := ui.RunGenerate(genCtx, entry, ui.GenerateOptions{
+			Prompt:     *generatePrompt,
+			Checkpoint: *generateCheckpoint,
+			Steps:      *generateSteps,
+			Width:      *generateWidth,
+			Height:     *generateHeight,
+			Seed:       *generateSeed,
+		}); err != nil {
+			os.Exit(1)
+		}
+		return
 	}
 
 	// Check Ollama installation.
@@ -196,6 +226,10 @@ func main() {
 		// External model (diffusion / non-Ollama) — cannot use "ollama pull".
 		// Show dedicated pipeline setup instructions instead.
 		ui.ShowExternalModelInstructions(*entry)
+		// If ComfyUI is running, offer to generate an image right now.
+		if entry.Pipeline == "comfyui" {
+			ui.OfferGenerate(ctx, *entry)
+		}
 	} else {
 		// Standard Ollama model — pull and run via ollama.
 		if wantInstall {
