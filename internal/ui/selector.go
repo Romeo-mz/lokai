@@ -117,6 +117,9 @@ func (m selectorModel) View() string {
 		if !rec.FitsInVRAM {
 			label += WarningStyle.Render(" ⚠")
 		}
+		if !rec.Model.IsPullable() {
+			label += WarningStyle.Render(" [manual setup]")
+		}
 		b.WriteString(cursor + style.Render(label) + "\n")
 	}
 

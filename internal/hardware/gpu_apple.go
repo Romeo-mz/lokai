@@ -2,6 +2,8 @@
 
 package hardware
 
+import "strings"
+
 // detectAppleSiliconDetails enriches specs with Apple Silicon-specific info.
 // On Apple Silicon, the GPU shares unified memory with the CPU.
 // We parse the CPU model name to estimate GPU core count.
@@ -65,15 +67,5 @@ func estimateAppleGPUCores(model string) int {
 // containsChipName checks if the model string contains the chip name.
 // Handles cases like "Apple M2 Pro" containing "M2 Pro".
 func containsChipName(model, chip string) bool {
-	// Simple substring match — works for "Apple M2 Pro" → "M2 Pro".
-	return len(model) >= len(chip) && indexOf(model, chip) >= 0
-}
-
-func indexOf(s, substr string) int {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return i
-		}
-	}
-	return -1
+	return strings.Contains(model, chip)
 }

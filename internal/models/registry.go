@@ -23,6 +23,12 @@ import (
 	"github.com/romeo-mz/lokai/internal/cache"
 )
 
+// reBillion and reMillion match parameter counts like "8b", "3.8b", "135m".
+var (
+	reBillion = regexp.MustCompile(`(\d+\.?\d*)b`)
+	reMillion = regexp.MustCompile(`(\d+)m`)
+)
+
 const registryCacheTTL = 24 * time.Hour
 
 const registryCacheKey = "registry"
@@ -44,7 +50,7 @@ func NewRegistry() *Registry {
 	return r
 }
 
-// Refresh fetches fresh model data from Ollama and GitHub, merges it
+// Refresh fetches fresh model data from the Ollama library, merges it
 // with the static catalog, and writes the result to the disk cache.
 // If the cache is still fresh (< 24 h), this is a no-op.
 func (r *Registry) Refresh(ctx context.Context) error {
@@ -55,21 +61,12 @@ func (r *Registry) Refresh(ctx context.Context) error {
 		return nil
 	}
 
-	var discovered []DiscoveredModel
-
 	ollamaModels, err := FetchOllamaModels(ctx)
-	if err == nil {
-		discovered = append(discovered, ollamaModels...)
+	if err != nil || len(ollamaModels) == 0 {
+		return fmt.Errorf("no models discovered from Ollama: %w", err)
 	}
 
-	githubModels, _ := FetchGitHubModels(ctx) // best-effort
-	discovered = append(discovered, githubModels...)
-
-	if len(discovered) == 0 {
-		return fmt.Errorf("no models discovered from any source")
-	}
-
-	entries := mergeDiscovered(discovered)
+	entries := mergeDiscovered(ollamaModels)
 
 	r.mu.Lock()
 	r.dynamic = entries
@@ -77,7 +74,7 @@ func (r *Registry) Refresh(ctx context.Context) error {
 	r.mu.Unlock()
 
 	r.saveCache()
-	return err
+	return nil
 }
 
 // DynamicCount returns how many extra models were found beyond the static catalog.
@@ -199,15 +196,13 @@ func inferModelEntry(name, tag, description string) *ModelEntry {
 func inferParamCount(s string) float64 {
 	lower := strings.ToLower(s)
 	// Billions: "8b", "3.8b"
-	reB := regexp.MustCompile(`(\d+\.?\d*)b`)
-	if m := reB.FindStringSubmatch(lower); len(m) > 1 {
+	if m := reBillion.FindStringSubmatch(lower); len(m) > 1 {
 		if v, err := strconv.ParseFloat(m[1], 64); err == nil {
 			return v
 		}
 	}
 	// Millions: "135m", "360m"
-	reM := regexp.MustCompile(`(\d+)m`)
-	if m := reM.FindStringSubmatch(lower); len(m) > 1 {
+	if m := reMillion.FindStringSubmatch(lower); len(m) > 1 {
 		if v, err := strconv.ParseFloat(m[1], 64); err == nil {
 			return v / 1000
 		}

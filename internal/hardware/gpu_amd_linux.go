@@ -3,7 +3,6 @@
 package hardware
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -31,7 +30,6 @@ func enrichAMD(specs *HardwareSpecs) {
 		return
 	}
 
-	amdIdx := 0
 	for _, cardPath := range cards {
 		totalBytes, err := readSysfsBytes(cardPath)
 		if err != nil {
@@ -46,19 +44,16 @@ func enrichAMD(specs *HardwareSpecs) {
 			freeBytes = 0
 		}
 
-		// Match to existing AMD GPU entries.
+		// Match to the next AMD GPU entry that has no VRAM data yet.
+		// sysfs card order is stable within a boot, matching by sequential index.
 		for j := range specs.GPUs {
 			if specs.GPUs[j].Vendor == GPUVendorAMD && specs.GPUs[j].VRAMTotalGB == 0 {
 				specs.GPUs[j].VRAMTotalGB = float64(totalBytes) / bytesPerGB
 				specs.GPUs[j].VRAMFreeGB = float64(freeBytes) / bytesPerGB
-				amdIdx++
 				break
 			}
 		}
 	}
-
-	_ = amdIdx
-	_ = fmt.Sprintf // silence unused import if needed
 }
 
 // readSysfsBytes reads a sysfs file containing a decimal byte count.

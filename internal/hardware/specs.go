@@ -81,12 +81,21 @@ type HardwareSpecs struct {
 
 // ComputeAvailableVRAM calculates the effective VRAM budget for model loading.
 // Priority: discrete GPU VRAM > Apple unified memory > system RAM fallback.
+// When multiple GPUs share the same vendor, their free VRAM is summed to support
+// tensor-parallel inference (e.g. two RTX 3090s, NVLink setups).
 func (s *HardwareSpecs) ComputeAvailableVRAM() {
-	// If we have discrete GPUs with detected VRAM, use the largest one.
-	var maxVRAM float64
+	// Sum free VRAM per vendor — same-vendor multi-GPU can run models in parallel.
+	vendorFree := make(map[GPUVendor]float64)
 	for _, gpu := range s.GPUs {
-		if gpu.VRAMFreeGB > maxVRAM {
-			maxVRAM = gpu.VRAMFreeGB
+		if gpu.VRAMFreeGB > 0 {
+			vendorFree[gpu.Vendor] += gpu.VRAMFreeGB
+		}
+	}
+
+	var maxVRAM float64
+	for _, vram := range vendorFree {
+		if vram > maxVRAM {
+			maxVRAM = vram
 		}
 	}
 

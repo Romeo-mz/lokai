@@ -26,6 +26,10 @@ func ScanAndDisplay(ctx context.Context) (*hardware.HardwareSpecs, error) {
 	if store != nil {
 		var cached hardware.HardwareSpecs
 		if store.Get(hwCacheKey, &cached) {
+			// Recompute the budget from the cached raw readings;
+			// the free VRAM at cache-write time may differ from now but
+			// is still more useful than a stale pre-computed value.
+			cached.ComputeAvailableVRAM()
 			fmt.Println(SubtitleStyle.Render("⚙ Hardware (cached)"))
 			fmt.Println()
 			displaySpecs(&cached)

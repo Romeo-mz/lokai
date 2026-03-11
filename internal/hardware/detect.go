@@ -3,6 +3,7 @@ package hardware
 import (
 	"context"
 	"fmt"
+	"os"
 	"runtime"
 	"sync"
 )
@@ -76,7 +77,7 @@ func Detect(ctx context.Context) (*HardwareSpecs, error) {
 	if len(errs) > 0 {
 		// Log warnings but don't fail — partial detection is still useful.
 		for _, e := range errs {
-			fmt.Printf("  ⚠ %s\n", e)
+			fmt.Fprintf(os.Stderr, "  ⚠ %s\n", e)
 		}
 	}
 

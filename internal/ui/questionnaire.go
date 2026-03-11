@@ -18,13 +18,13 @@ type UserPreferences struct {
 }
 
 // RunQuestionnaire displays the interactive use-case selection form.
-func RunQuestionnaire(specs *hardware.HardwareSpecs) (*UserPreferences, error) {
+// hasInstalledModels controls whether the "include remote" question is shown;
+// when false (empty library) it is skipped and remote models are always included.
+func RunQuestionnaire(specs *hardware.HardwareSpecs, hasInstalledModels bool) (*UserPreferences, error) {
 	prefs := &UserPreferences{}
 
 	var useCase string
 	var subTask string
-	var priority string
-	var includeRemote bool
 
 	form := huh.NewForm(
 		// Page 1: Use case selection.
@@ -68,8 +68,11 @@ func RunQuestionnaire(specs *hardware.HardwareSpecs) (*UserPreferences, error) {
 		}
 	}
 
-	// Page 3: Priority + include remote.
-	restForm := huh.NewForm(
+	// Page 3: Priority + optionally include remote.
+	priority := "balanced"
+	var includeRemote bool
+
+	priorityForm := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title("What's your priority?").
@@ -81,18 +84,29 @@ func RunQuestionnaire(specs *hardware.HardwareSpecs) (*UserPreferences, error) {
 				).
 				Value(&priority),
 		),
-		huh.NewGroup(
-			huh.NewConfirm().
-				Title("Include models not yet downloaded?").
-				Description("Show all compatible models, not just locally installed ones").
-				Affirmative("Yes, show all").
-				Negative("No, only installed").
-				Value(&includeRemote),
-		),
 	)
-
-	if err := restForm.Run(); err != nil {
+	if err := priorityForm.Run(); err != nil {
 		return nil, fmt.Errorf("questionnaire cancelled: %w", err)
+	}
+
+	// Skip the remote-models question when the library is empty: always include all.
+	if hasInstalledModels {
+		remoteForm := huh.NewForm(
+			huh.NewGroup(
+				huh.NewConfirm().
+					Title("Include models not yet downloaded?").
+					Description("Show all compatible models, not just locally installed ones").
+					Affirmative("Yes, show all").
+					Negative("No, only installed").
+					Value(&includeRemote),
+			),
+		)
+		if err := remoteForm.Run(); err != nil {
+			return nil, fmt.Errorf("questionnaire cancelled: %w", err)
+		}
+	} else {
+		// Nothing is installed yet — always show all models so results aren’t empty.
+		includeRemote = true
 	}
 
 	prefs.UseCase = hardware.UseCase(useCase)

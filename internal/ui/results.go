@@ -38,8 +38,10 @@ func DisplayResults(recs []models.Recommendation, specs *hardware.HardwareSpecs,
 		est := models.EstimatePerformance(rec.Model, specs)
 
 		modelDisplay := rec.Model.OllamaTag
+		installNote := rec.Reason
 		if !rec.Model.IsPullable() {
-			modelDisplay = rec.Model.OllamaTag + MutedStyle.Render(" (ComfyUI)")
+			modelDisplay = rec.Model.OllamaTag
+			installNote = WarningStyle.Render("⚠ Manual setup via " + rec.Model.Pipeline + " — cannot be pulled with ollama")
 		}
 		rows = append(rows, []string{
 			rank,
@@ -48,7 +50,7 @@ func DisplayResults(recs []models.Recommendation, specs *hardware.HardwareSpecs,
 			vramStr,
 			fmt.Sprintf("~%.0f tok/s", est.TokensPerSecond),
 			est.QualityRating,
-			rec.Reason,
+			installNote,
 		})
 	}
 
