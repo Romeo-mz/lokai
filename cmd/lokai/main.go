@@ -155,8 +155,8 @@ func main() {
 	if reg.DynamicCount() > 0 {
 		catalog = reg.FullCatalog()
 	}
-	// Load cached benchmark results to improve speed-priority scoring and display.
-	benchData := ui.LoadBenchmarkCache()
+	// Load or incrementally collect benchmark data (offers speed test for un-benchmarked models).
+	benchData := ui.LoadOrPromptBenchmark(ctx, client, installedModels, *jsonOutput)
 
 	recs := models.Recommend(specs, models.RecommendOptions{
 		UseCase:       prefs.UseCase,

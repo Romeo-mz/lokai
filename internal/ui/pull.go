@@ -3,8 +3,12 @@ package ui
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/charmbracelet/huh"
 
 	"github.com/romeo-mz/lokai/internal/ollama"
 )
@@ -68,6 +72,26 @@ func PullWithProgress(ctx context.Context, client *ollama.Client, modelTag strin
 	fmt.Printf("   API endpoint:       %s\n", ValueStyle.Render("http://localhost:11434/api/chat"))
 	fmt.Printf("   Stop the model:     %s\n", ValueStyle.Render("ollama stop "+modelTag))
 	fmt.Println()
+
+	// Offer to launch an interactive chat session right away.
+	var launch bool
+	_ = huh.NewForm(huh.NewGroup(
+		huh.NewConfirm().
+			Title("Launch "+modelTag+" now?").
+			Description("Opens an interactive chat session in this terminal").
+			Affirmative("Yes, launch").
+			Negative("No thanks").
+			Value(&launch),
+	)).Run()
+
+	if launch {
+		fmt.Println()
+		cmd := exec.Command("ollama", "run", modelTag)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		_ = cmd.Run()
+	}
 
 	return nil
 }

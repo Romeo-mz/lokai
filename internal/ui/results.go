@@ -51,10 +51,15 @@ func DisplayResults(recs []models.Recommendation, specs *hardware.HardwareSpecs,
 			modelDisplay = rec.Model.OllamaTag
 			installNote = WarningStyle.Render("⚠ Manual setup via " + rec.Model.Pipeline + " — cannot be pulled with ollama")
 		}
+		ctxStr := "—"
+		if rec.Model.ContextLengthK > 0 {
+			ctxStr = fmt.Sprintf("%dK", rec.Model.ContextLengthK)
+		}
 		rows = append(rows, []string{
 			rank,
 			modelDisplay,
 			rec.Model.ParameterSize,
+			ctxStr,
 			vramStr,
 			speedLabel,
 			est.QualityRating,
@@ -65,7 +70,7 @@ func DisplayResults(recs []models.Recommendation, specs *hardware.HardwareSpecs,
 	t := table.New().
 		Border(lipgloss.RoundedBorder()).
 		BorderStyle(lipgloss.NewStyle().Foreground(ColorSuccess)).
-		Headers("Rank", "Model", "Size", "VRAM Needed", "Est. Speed", "Quality", "Notes").
+		Headers("Rank", "Model", "Size", "Context", "VRAM Needed", "Est. Speed", "Quality", "Notes").
 		Rows(rows...).
 		StyleFunc(func(row, col int) lipgloss.Style {
 			if row == table.HeaderRow {

@@ -297,7 +297,7 @@ func TestGenerate_StreamsTokens(t *testing.T) {
 		if d {
 			done = true
 		}
-	})
+	}, nil)
 	require.NoError(t, err)
 	assert.True(t, done)
 	assert.Contains(t, tokens, "Hello")

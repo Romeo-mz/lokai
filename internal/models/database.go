@@ -57,6 +57,8 @@ type ModelEntry struct {
 	ExternalURL string `json:"external_url,omitempty"`
 	// Pipeline is the required inference software (e.g. "comfyui", "whisper.cpp").
 	Pipeline string `json:"pipeline,omitempty"`
+	// ContextLengthK is the model's context window in thousands of tokens (0 = not documented).
+	ContextLengthK int `json:"context_length_k,omitempty"`
 }
 
 // IsPullable returns true when the model can be installed via "ollama pull".
@@ -688,4 +690,79 @@ func GetModelByTag(tag string) *ModelEntry {
 		}
 	}
 	return nil
+}
+
+// contextLengths maps OllamaTag to context window size in thousands of tokens.
+// Values are injected into Catalog entries by init().
+var contextLengths = map[string]int{
+	// Chat
+	"tinyllama:1.1b":     2,
+	"smollm2:135m":       2,
+	"smollm2:360m":       2,
+	"smollm2:1.7b":       8,
+	"llama3.2:1b":        128,
+	"llama3.2:3b":        128,
+	"phi4-mini":          128,
+	"gemma3:4b":          128,
+	"mistral:7b":         32,
+	"llama3.1:8b":        128,
+	"qwen3:8b":           128,
+	"gemma3:12b":         128,
+	"qwen2.5:14b":        128,
+	"mistral-small:24b":  128,
+	"gemma3:27b":         128,
+	"qwen2.5:32b":        128,
+	"llama3.1:70b":       128,
+	"qwen2.5:72b":        128,
+	// Code
+	"qwen2.5-coder:0.5b":    128,
+	"qwen2.5-coder:1.5b":    128,
+	"starcoder2:3b":          16,
+	"qwen2.5-coder:3b":       128,
+	"granite-code:3b":         8,
+	"yi-coder:9b":            128,
+	"codegemma:7b":             8,
+	"qwen2.5-coder:7b":       128,
+	"starcoder2:15b":          16,
+	"deepseek-coder-v2:16b":  128,
+	"qwen2.5-coder:14b":      128,
+	"codestral:22b":           32,
+	"qwen2.5-coder:32b":      128,
+	// Vision
+	"moondream:1.8b":          4,
+	"llava:7b":                4,
+	"minicpm-v:8b":            8,
+	"qwen2.5vl:7b":           128,
+	"llama3.2-vision:11b":    128,
+	"internvl2:8b":            8,
+	"pixtral:12b":            128,
+	"molmo:7b":                4,
+	"qwen2.5vl:32b":          128,
+	"llama3.2-vision:90b":    128,
+	// Embedding
+	"nomic-embed-text": 8,
+	"bge-m3":           8,
+	// Reasoning
+	"deepseek-r1:1.5b":   32,
+	"deepseek-r1:7b":    128,
+	"deepseek-r1:14b":   128,
+	"phi4-reasoning:14b": 128,
+	"deepseek-r1:32b":   128,
+	"qwq:32b":            32,
+	"deepseek-r1:70b":   128,
+	// Unrestricted
+	"dolphin-phi:2.7b":              2,
+	"llama2-uncensored:7b":          4,
+	"dolphin-mistral:7b":           32,
+	"dolphin-llama3:8b":             8,
+	"wizard-vicuna-uncensored:13b":  4,
+	"dolphin-mixtral:8x7b":         32,
+}
+
+func init() {
+	for i := range Catalog {
+		if k, ok := contextLengths[Catalog[i].OllamaTag]; ok {
+			Catalog[i].ContextLengthK = k
+		}
+	}
 }

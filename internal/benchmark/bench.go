@@ -128,6 +128,7 @@ func generate(ctx context.Context, client *ollama.Client, model, prompt string, 
 	var firstTokenTime time.Time
 	var sb strings.Builder
 	tokenCount := 0
+	var stats ollama.GenerateStats
 
 	err := client.Generate(ctx, model, prompt, func(token string, done bool) {
 		if tokenCount == 0 {
@@ -135,7 +136,7 @@ func generate(ctx context.Context, client *ollama.Client, model, prompt string, 
 		}
 		sb.WriteString(token)
 		tokenCount++
-	})
+	}, &stats)
 
 	totalDuration := time.Since(start)
 
@@ -148,14 +149,21 @@ func generate(ctx context.Context, client *ollama.Client, model, prompt string, 
 		ttft = firstTokenTime.Sub(start)
 	}
 
-	evalDuration := totalDuration - ttft
+	// Use Ollama's native metrics when available; fall back to wall-clock estimates.
 	evalRate := 0.0
-	if evalDuration.Seconds() > 0 && tokenCount > 0 {
-		evalRate = float64(tokenCount) / evalDuration.Seconds()
+	if stats.EvalDuration > 0 && stats.EvalCount > 0 {
+		evalRate = float64(stats.EvalCount) / stats.EvalDuration.Seconds()
+	} else {
+		evalDuration := totalDuration - ttft
+		if evalDuration.Seconds() > 0 && tokenCount > 0 {
+			evalRate = float64(tokenCount) / evalDuration.Seconds()
+		}
 	}
 
 	promptEvalRate := 0.0
-	if ttft.Seconds() > 0 {
+	if stats.PromptEvalDuration > 0 && stats.PromptEvalCount > 0 {
+		promptEvalRate = float64(stats.PromptEvalCount) / stats.PromptEvalDuration.Seconds()
+	} else if ttft.Seconds() > 0 {
 		// Rough estimate: prompt tokens ≈ words * 1.3
 		promptTokens := float64(len(strings.Fields(prompt))) * 1.3
 		promptEvalRate = promptTokens / ttft.Seconds()
@@ -164,6 +172,7 @@ func generate(ctx context.Context, client *ollama.Client, model, prompt string, 
 	return genResult{
 		tokensGenerated:  tokenCount,
 		totalDuration:    totalDuration,
+		loadDuration:     stats.LoadDuration,
 		timeToFirstToken: ttft,
 		evalRate:         evalRate,
 		promptEvalRate:   promptEvalRate,

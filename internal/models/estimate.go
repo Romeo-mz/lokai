@@ -75,21 +75,34 @@ func estimateTokensPerSecond(model ModelEntry, specs *hardware.HardwareSpecs) fl
 			baseTokPerSec = 18
 		}
 	} else if specs.HasGPU && len(specs.GPUs) > 0 {
-		gpu := specs.GPUs[0]
+		// Sum VRAM per vendor — mirrors ComputeAvailableVRAM for multi-GPU rigs.
+		vendorTotal := make(map[hardware.GPUVendor]float64)
+		for _, g := range specs.GPUs {
+			vendorTotal[g.Vendor] += g.VRAMTotalGB
+		}
+		var effectiveVRAM float64
+		for _, v := range vendorTotal {
+			if v > effectiveVRAM {
+				effectiveVRAM = v
+			}
+		}
+		// Sub-linear throughput gain per additional GPU (~70% scaling).
+		gpuMult := 1.0 + float64(len(specs.GPUs)-1)*0.7
 		switch {
-		case gpu.VRAMTotalGB >= 24: // RTX 4090, A6000
+		case effectiveVRAM >= 24: // RTX 4090, A6000, or dual RTX 3080
 			baseTokPerSec = 60
-		case gpu.VRAMTotalGB >= 16: // RTX 4080, A5000
+		case effectiveVRAM >= 16: // RTX 4080, A5000
 			baseTokPerSec = 45
-		case gpu.VRAMTotalGB >= 12: // RTX 3080, RTX 4070
+		case effectiveVRAM >= 12: // RTX 3080, RTX 4070
 			baseTokPerSec = 35
-		case gpu.VRAMTotalGB >= 8: // RTX 3060, RTX 4060
+		case effectiveVRAM >= 8: // RTX 3060, RTX 4060
 			baseTokPerSec = 28
-		case gpu.VRAMTotalGB >= 6: // GTX 1660
+		case effectiveVRAM >= 6: // GTX 1660
 			baseTokPerSec = 20
 		default: // Low-end GPU
 			baseTokPerSec = 12
 		}
+		baseTokPerSec *= gpuMult
 	} else {
 		// CPU-only: heavily dependent on core count and AVX.
 		baseTokPerSec = float64(specs.CPUCores) * 1.2

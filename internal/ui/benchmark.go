@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/lipgloss/table"
 
@@ -127,6 +128,57 @@ func LoadBenchmarkCache() map[string]float64 {
 		return nil
 	}
 	return result
+}
+
+// BenchResultsToMap converts a benchmark result slice to the tag→tok/s map
+// expected by models.RecommendOptions.BenchmarkData.
+func BenchResultsToMap(results []benchmark.Result) map[string]float64 {
+	m := make(map[string]float64, len(results))
+	for _, r := range results {
+		if r.Success && r.EvalRate > 0 {
+			m[r.ModelTag] = r.EvalRate
+		}
+	}
+	return m
+}
+
+// LoadOrPromptBenchmark loads cached benchmark results. When installed models
+// have no cached data, it offers a one-time incremental speed test.
+// In JSON mode (non-interactive) the prompt is skipped and only the cache is returned.
+func LoadOrPromptBenchmark(ctx context.Context, client *ollama.Client, installed []ollama.ModelInfo, jsonMode bool) map[string]float64 {
+	if len(installed) == 0 {
+		return nil
+	}
+	cached := LoadBenchmarkCache()
+	if jsonMode {
+		return cached
+	}
+	missing := 0
+	for _, m := range installed {
+		if _, ok := cached[m.Name]; !ok {
+			missing++
+		}
+	}
+	if missing == 0 {
+		return cached
+	}
+
+	var runBench bool
+	_ = huh.NewForm(huh.NewGroup(
+		huh.NewConfirm().
+			Title(fmt.Sprintf("%d installed model(s) have no speed data", missing)).
+			Description("Run a quick benchmark now? (~20s per model)").
+			Affirmative("Yes, measure now").
+			Negative("Skip, use estimates").
+			Value(&runBench),
+	)).Run()
+
+	if !runBench {
+		return cached
+	}
+
+	results, _ := RunBenchmarkCached(ctx, client)
+	return BenchResultsToMap(results)
 }
 
 func runBenchmarkInner(ctx context.Context, client *ollama.Client, force bool) error {

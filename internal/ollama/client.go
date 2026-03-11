@@ -136,8 +136,19 @@ func (c *Client) IsModelInstalled(ctx context.Context, name string) (bool, error
 	return false, nil
 }
 
+// GenerateStats captures the authoritative generation metrics returned by Ollama
+// in the final streaming message. Pass a non-nil pointer to receive them.
+type GenerateStats struct {
+	EvalCount          int
+	EvalDuration       time.Duration
+	LoadDuration       time.Duration
+	PromptEvalCount    int
+	PromptEvalDuration time.Duration
+}
+
 // Generate runs a text generation request and streams tokens via callback.
-func (c *Client) Generate(ctx context.Context, model, prompt string, tokenFn func(token string, done bool)) error {
+// If stats is non-nil, Ollama's native eval metrics are written to it on completion.
+func (c *Client) Generate(ctx context.Context, model, prompt string, tokenFn func(token string, done bool), stats *GenerateStats) error {
 	stream := true
 	req := &api.GenerateRequest{
 		Model:  model,
@@ -148,6 +159,13 @@ func (c *Client) Generate(ctx context.Context, model, prompt string, tokenFn fun
 	err := c.inner.Generate(ctx, req, func(resp api.GenerateResponse) error {
 		if tokenFn != nil {
 			tokenFn(resp.Response, resp.Done)
+		}
+		if resp.Done && stats != nil {
+			stats.EvalCount = resp.EvalCount
+			stats.EvalDuration = resp.EvalDuration
+			stats.LoadDuration = resp.LoadDuration
+			stats.PromptEvalCount = resp.PromptEvalCount
+			stats.PromptEvalDuration = resp.PromptEvalDuration
 		}
 		return nil
 	})

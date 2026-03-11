@@ -259,13 +259,20 @@ func subTaskBonus(model ModelEntry, subTask SubTask) float64 {
 		}
 
 	case SubTaskSummarization:
-		// Prefer models with good context handling.
+		// Prefer models with large context windows and good context handling.
+		bonus := 0.0
 		if hasCap("tools") {
-			return 5
+			bonus += 5
 		}
 		if model.ParameterCount >= 8 && model.ParameterCount <= 14 {
-			return 10
+			bonus += 10
 		}
+		if model.ContextLengthK >= 32 {
+			bonus += 12
+		} else if model.ContextLengthK >= 16 {
+			bonus += 6
+		}
+		return bonus
 
 	// ── Code sub-tasks ──
 	case SubTaskAutocomplete:
@@ -355,22 +362,35 @@ func subTaskBonus(model ModelEntry, subTask SubTask) float64 {
 		}
 
 	case SubTaskPlanning:
-		// Prefer larger context models.
+		// Prefer large context + tool-capable models.
+		bonus := 0.0
 		if model.ParameterCount >= 14 {
-			return 12
+			bonus += 12
 		}
 		if hasCap("tools") {
-			return 8
+			bonus += 8
 		}
+		if model.ContextLengthK >= 32 {
+			bonus += 12
+		} else if model.ContextLengthK >= 16 {
+			bonus += 6
+		}
+		return bonus
 
 	case SubTaskResearch:
-		// Prefer high-quality, large models.
+		// Prefer high-quality models with large context windows.
+		bonus := 0.0
 		if model.Quality >= 70 {
-			return 15
+			bonus += 15
+		} else if model.ParameterCount >= 14 {
+			bonus += 8
 		}
-		if model.ParameterCount >= 14 {
-			return 8
+		if model.ContextLengthK >= 32 {
+			bonus += 12
+		} else if model.ContextLengthK >= 16 {
+			bonus += 6
 		}
+		return bonus
 
 	// ── Image gen sub-tasks ──
 	case SubTaskPhotorealistic:
