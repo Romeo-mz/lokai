@@ -2,10 +2,11 @@
 
 # 🤖 lokai
 
+![](docs/demo.gif)
+
 **Find the best local AI model for your hardware — automatically**
 
-[![CI](https://github.com/romeo-mz/lokai/actions/workflows/ci.yml/badge.svg)](https://github.com/romeo-mz/lokai/actions/workflows/ci.yml)
-[![Go](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat&logo=go)](https://go.dev)
+[![CI](https://github.com/Romeo-mz/lokai/actions/workflows/ci.yml/badge.svg)](https://github.com/Romeo-mz/lokai/actions/workflows/ci.yml)[![Go](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat&logo=go)](https://go.dev)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/romeo-mz/lokai?style=flat)](https://github.com/romeo-mz/lokai/releases)
 [![Docker](https://img.shields.io/badge/Docker-ghcr.io-blue?logo=docker)](https://github.com/romeo-mz/lokai/pkgs/container/lokai)
