@@ -8,7 +8,9 @@ import (
 
 // detectMemory populates RAM info in specs using gopsutil.
 func detectMemory(ctx context.Context, specs *HardwareSpecs) error {
-	vm, err := mem.VirtualMemoryWithContext(ctx)
+	var vm *mem.VirtualMemoryStat
+	var err error
+	vm, err = mem.VirtualMemoryWithContext(ctx)
 	if err != nil {
 		return err
 	}

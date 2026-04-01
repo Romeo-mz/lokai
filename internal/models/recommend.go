@@ -241,7 +241,7 @@ func subTaskBonus(model ModelEntry, subTask SubTask) float64 {
 		}
 
 	case SubTaskCreative:
-		// Prefer larger models, bonus for uncensored/creative families.
+		// Prefer larger models, bonus for unrestricted/creative families.
 		if model.ParameterCount >= 14 {
 			return 10
 		}

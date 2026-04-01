@@ -14,7 +14,7 @@
 Scan your hardware → Pick a use case → Get the best local AI model.
 No guesswork. No VRAM spreadsheets. Just run `lokai`.
 
-**76 models • 9 use cases • Every GPU from Raspberry Pi to workstation**
+**100+ models • 9 use cases • Every GPU from Raspberry Pi to workstation**
 Includes native **ComfyUI integration** for image & video generation.
 
 </div>
@@ -120,6 +120,7 @@ lokai --use-case chat --priority quality
 | `--width` | Output image width in pixels (default 1024) |
 | `--height` | Output image height in pixels (default 1024) |
 | `--seed` | RNG seed for `--generate` (-1 = random) |
+| `--export-comfy-workflow` | Write a ComfyUI API-format example workflow JSON (requires `--model` with an image-gen tag); honors `--checkpoint`, `--steps`, `--width`, `--height`, `--seed` |
 
 ## Supported Hardware
 
@@ -153,7 +154,7 @@ lokai --use-case chat --priority quality
 | 🖼 **Image Gen** | 6 | FLUX.1, SD 3.5, SDXL, PixArt |
 | 🎬 **Video** | 5 | Wan 2.1, HunyuanVideo, CogVideoX, LTX Video |
 | 🎙 **Audio** | 6 | Whisper (tiny→large), Bark |
-| 🔓 **Uncensored** | 6 | Dolphin Llama3/Mistral/Mixtral, Wizard Vicuna |
+| 🔓 **Unrestricted** | 6 | Dolphin Llama3/Mistral/Mixtral, Wizard Vicuna |
 
 ### Hardware Tiers
 
@@ -171,7 +172,7 @@ lokai has native ComfyUI support for the **Image Gen** and **Video** use cases.
 
 ### Interactive flow
 
-Select **🖼 Image Gen** in the TUI. lokai recommends the best diffusion model for your VRAM, shows download and pipeline setup instructions, then — if ComfyUI is already running — offers to queue a generation immediately.
+Select **🖼 Image Gen** in the TUI. lokai recommends the best diffusion model for your VRAM, shows download and pipeline setup instructions, then offers to save an example ComfyUI workflow JSON and — if ComfyUI is already running — to queue a generation immediately. Video models include links to official ComfyUI video examples (graphs vary by model).
 
 ### Direct CLI generation
 
@@ -188,6 +189,9 @@ lokai --generate "cyberpunk cityscape, neon lights" \
       --model flux-dev \
       --checkpoint flux1-dev.safetensors \
       --steps 30 --width 1024 --height 1024 --seed 1234
+
+# Export example API workflow JSON (no running ComfyUI required)
+lokai --export-comfy-workflow ./flux-example.json --model flux-schnell
 ```
 
 Step defaults are applied automatically per model family:
@@ -227,7 +231,7 @@ Set `COMFYUI_HOST` to override the default address.
 │              │     │  • Image Gen │     │    performance │     │                              │
 │              │     │  • Video     │     │                │     │                              │
 │              │     │  • Audio     │     │                │     │                              │
-│              │     │  • Unrestricted      │     │                │     │                              │
+│              │     │  • Uncensored│     │                │     │                              │
 └──────────────┘     └──────────────┘     └────────────────┘     └──────────────────────────────┘
 ```
 

@@ -14,7 +14,7 @@ const (
 	UseCaseImage     UseCase = "image"
 	UseCaseVideo     UseCase = "video"
 	UseCaseAudio     UseCase = "audio"
-	UseCaseUnrestricted      UseCase = "unrestricted"
+	UseCaseUnrestricted UseCase = "unrestricted"
 )
 
 // GPUVendor identifies the GPU manufacturer.

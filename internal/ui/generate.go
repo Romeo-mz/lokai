@@ -130,9 +130,12 @@ func RunGenerate(ctx context.Context, entry *models.ModelEntry, opts GenerateOpt
 }
 
 // OfferGenerate is called after ShowExternalModelInstructions when the selected
-// model uses the comfyui pipeline. It silently checks whether ComfyUI is
-// running, and if so, offers an inline generation prompt.
+// model is an image-generation ComfyUI model. It silently checks whether
+// ComfyUI is running, and if so, offers an inline generation prompt.
 func OfferGenerate(ctx context.Context, entry models.ModelEntry) {
+	if !EntryIsImageComfyUI(entry) {
+		return
+	}
 	client := comfyui.NewClient()
 	if err := client.CheckHealth(ctx); err != nil {
 		return // ComfyUI not running — silently skip
@@ -178,15 +181,9 @@ func promptGenerateOptions(entry *models.ModelEntry, checkpoints []string, opts 
 	// Checkpoint selection.
 	if opts.Checkpoint == "" {
 		if len(checkpoints) > 0 {
-			// Pre-select best match if a model tag was provided.
-			selected := checkpoints[0]
+			selected := comfyui.MatchCheckpointForFamily(checkpoints, "")
 			if entry != nil {
-				for _, c := range checkpoints {
-					if strings.Contains(strings.ToLower(c), strings.ToLower(entry.Family)) {
-						selected = c
-						break
-					}
-				}
+				selected = comfyui.MatchCheckpointForFamily(checkpoints, entry.Family)
 			}
 			opts.Checkpoint = selected
 

@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/romeo-mz/lokai/internal/cache"
@@ -36,6 +37,7 @@ func main() {
 	generateWidth := flag.Int("width", 1024, "Output image width for --generate")
 	generateHeight := flag.Int("height", 1024, "Output image height for --generate")
 	generateSeed := flag.Int64("seed", -1, "Random seed for --generate (-1 = random)")
+	exportComfyWorkflow := flag.String("export-comfy-workflow", "", "Write example ComfyUI API workflow JSON to this path (requires --model, image-gen tag)")
 	flag.Parse()
 
 	// Legacy positional-word commands kept for backward compat.
@@ -78,6 +80,37 @@ func main() {
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")
 			_ = enc.Encode(specs)
+		}
+		return
+	}
+
+	// Handle --export-comfy-workflow: write API prompt JSON (no Ollama needed, no banner).
+	if strings.TrimSpace(*exportComfyWorkflow) != "" {
+		if strings.TrimSpace(*generateModel) == "" {
+			fmt.Fprintln(os.Stderr, "✗ --export-comfy-workflow requires --model (e.g. flux-schnell)")
+			os.Exit(1)
+		}
+		entry := models.GetModelByTag(*generateModel)
+		if entry == nil {
+			fmt.Fprintf(os.Stderr, "✗ unknown model tag: %s\n", *generateModel)
+			os.Exit(1)
+		}
+		if !ui.EntryIsImageComfyUI(*entry) {
+			fmt.Fprintln(os.Stderr, "✗ --export-comfy-workflow requires an image-generation ComfyUI catalog model (e.g. flux-dev, sdxl)")
+			os.Exit(1)
+		}
+		exportCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+		if err := ui.RunExportComfyWorkflow(exportCtx, entry, ui.ExportComfyWorkflowOptions{
+			OutPath:    *exportComfyWorkflow,
+			Checkpoint: *generateCheckpoint,
+			Steps:      *generateSteps,
+			Width:      *generateWidth,
+			Height:     *generateHeight,
+			Seed:       *generateSeed,
+		}); err != nil {
+			fmt.Fprintln(os.Stderr, "✗ "+err.Error())
+			os.Exit(1)
 		}
 		return
 	}
@@ -149,7 +182,7 @@ func main() {
 	// ── Non-interactive JSON mode ─────────────────────────────────────
 	if *jsonOutput {
 		if *useCaseFlag == "" {
-			fmt.Fprintln(os.Stderr, "✗ --json requires --use-case (chat|code|vision|embedding|reasoning|image|video|audio|nsfw)")
+			fmt.Fprintln(os.Stderr, "✗ --json requires --use-case (chat|code|vision|embedding|reasoning|image|video|audio|unrestricted)")
 			os.Exit(1)
 		}
 		runJSONMode(ctx, client, hardware.UseCase(*useCaseFlag), models.Priority(*priorityFlag))
@@ -228,6 +261,9 @@ func main() {
 		ui.ShowExternalModelInstructions(*entry)
 		// If ComfyUI is running, offer to generate an image right now.
 		if entry.Pipeline == "comfyui" {
+			if ui.EntryIsImageComfyUI(*entry) {
+				ui.OfferComfyWorkflowExport(ctx, *entry)
+			}
 			ui.OfferGenerate(ctx, *entry)
 		}
 	} else {

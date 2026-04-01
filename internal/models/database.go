@@ -24,7 +24,7 @@ const (
 	UseCaseImage     = hardware.UseCaseImage
 	UseCaseVideo     = hardware.UseCaseVideo
 	UseCaseAudio     = hardware.UseCaseAudio
-	UseCaseUnrestricted      = hardware.UseCaseUnrestricted
+	UseCaseUnrestricted = hardware.UseCaseUnrestricted
 )
 
 // Priority represents the user's performance preference.
@@ -619,9 +619,9 @@ var Catalog = []ModelEntry{
 	},
 
 	// ═══════════════════════════════════════════
-	// Unrestricted / UNCENSORED
+	// Unrestricted
 	// Models without built-in content filters.
-	// For image/video Unrestricted generation, use Stable Diffusion
+	// For image/video unrestricted generation, use Stable Diffusion
 	// (ComfyUI, A1111, Forge) with appropriate checkpoints.
 	// ═══════════════════════════════════════════
 	{

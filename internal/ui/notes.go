@@ -2,9 +2,26 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/romeo-mz/lokai/internal/models"
 )
+
+// comfyUIVideoExampleDocsURL returns official ComfyUI example docs for video families in the catalog.
+func comfyUIVideoExampleDocsURL(family string) string {
+	switch strings.ToLower(strings.TrimSpace(family)) {
+	case "wan":
+		return "https://comfyanonymous.github.io/ComfyUI_examples/wan/"
+	case "ltx":
+		return "https://comfyanonymous.github.io/ComfyUI_examples/ltxv/"
+	case "cogvideo":
+		return "https://comfyanonymous.github.io/ComfyUI_examples/video/"
+	case "hunyuan":
+		return "https://comfyanonymous.github.io/ComfyUI_examples/hunyuan_video/"
+	default:
+		return "https://comfyanonymous.github.io/ComfyUI_examples/video/"
+	}
+}
 
 // ShowVideoPipelineNote displays an informational box explaining that video
 // generation models require a separate diffusion pipeline.
@@ -41,14 +58,14 @@ func ShowHereticSuggestion() {
 	fmt.Println(MutedStyle.Render("   Works with any model — not just the unrestricted ones listed above."))
 	fmt.Println()
 
-	// Unrestricted image/video generation note.
+	// Uncensored image/video generation note.
 	fmt.Println(SubtitleStyle.Render("🖼  Unrestricted Image & Video Generation"))
 	fmt.Println()
-	fmt.Println("   For unrestricted image/video generation, use Stable Diffusion with Unrestricted checkpoints:")
+	fmt.Println("   For unrestricted image/video generation, use Stable Diffusion with open checkpoints:")
 	fmt.Println()
 	fmt.Println("   " + ValueStyle.Render("ComfyUI") + "        — " + MutedStyle.Render("https://github.com/comfyanonymous/ComfyUI"))
 	fmt.Println("   " + ValueStyle.Render("A1111 WebUI") + "    — " + MutedStyle.Render("https://github.com/AUTOMATIC1111/stable-diffusion-webui"))
-	fmt.Println("   " + ValueStyle.Render("CivitAI") + "        — " + MutedStyle.Render("https://civitai.com (browse Unrestricted checkpoints & LoRAs)"))
+	fmt.Println("   " + ValueStyle.Render("CivitAI") + "        — " + MutedStyle.Render("https://civitai.com (browse open checkpoints & LoRAs)"))
 	fmt.Println()
 	fmt.Println(MutedStyle.Render("   These tools run locally and support full creative freedom."))
 	fmt.Println()
@@ -126,6 +143,14 @@ func ShowExternalModelInstructions(entry models.ModelEntry) {
 			"   " + SubtitleStyle.Render("Step 3 — Load the model in your pipeline") + "\n" +
 			MutedStyle.Render("   Place the downloaded weights in the pipeline's models/checkpoints directory\n") +
 			MutedStyle.Render("   and select it from the UI. ComfyUI also supports drag-and-drop workflows.")
+		if isVideo {
+			videoURL := comfyUIVideoExampleDocsURL(entry.Family)
+			note += "\n\n" +
+				"   " + SubtitleStyle.Render("Step 4 — Example ComfyUI workflow (video)") + "\n" +
+				"   Official examples and node graphs differ per model; start from:\n" +
+				"   " + ValueStyle.Render(videoURL) + "\n" +
+				MutedStyle.Render("   Install any extra custom nodes the example requires, then match weights paths.")
+		}
 	} else if entry.ExternalURL != "" {
 		note += "   " + ValueStyle.Render(entry.ExternalURL) + "\n"
 	}
