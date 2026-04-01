@@ -45,7 +45,7 @@ func RunExportComfyWorkflow(ctx context.Context, entry *models.ModelEntry, opts 
 	if entry == nil {
 		return fmt.Errorf("model entry required")
 	}
-	client := comfyui.NewClient()
+	var client *comfyui.Client
 	checkpoint := comfyui.SuggestCheckpoint(ctx, client, entry.Family, entry.OllamaTag, opts.Checkpoint)
 
 	genOpts := GenerateOptions{
